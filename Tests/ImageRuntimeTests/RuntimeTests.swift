@@ -52,8 +52,8 @@ struct RuntimeTests {
             JobSpec(capability: .imageUpscale, params: ["scale": .number(Double(scale))],
                     inputs: ["image": [AssetID(rawValue: "ast_01TEST")]])
         }
-        let entries = ModelCatalog.processing()
-        func package(_ id: String) -> String { entries.first { $0.id.rawValue == id }!.packageID.rawValue }
+        // Routes carry the engine's registration ids, which look nothing like the catalog's.
+        func package(_ id: String) -> String { "registration-\(id.count)" }
         let realplksr = route("realplksr-upscale", package("realplksr-upscale"))
         let heart = route("heart-upscale", package("heart-upscale"))
         let vosr2 = route("vosr2-upscale", package("vosr2-upscale"))

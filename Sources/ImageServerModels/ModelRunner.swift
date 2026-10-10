@@ -85,8 +85,9 @@ public struct EngineRunner: ModelRunner {
     /// The enhancer tier a route's model is, when it has one (NERVE fast, RealPLKSR best, VOSR2 generative, Nacre
     /// generative-clean).
     public static func tier(for route: RoutedModel) -> UpscaleTier? {
-        guard route.capability == .imageUpscale, route.packageID.hasPrefix("forge."),
-              let model = ForgeModel(rawValue: String(route.packageID.dropFirst("forge.".count))) else { return nil }
+        // By the model's catalog id: a route carries the engine's registration id, not the catalog's package id.
+        guard route.capability == .imageUpscale,
+              let model = ModelCatalog.processing().first(where: { $0.id == route.id })?.forgeModel else { return nil }
         // EngineImageEnhancer.model(for:), inverted (its own inverse is main-actor isolated).
         switch model {
         case .upscale: return .fast
