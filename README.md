@@ -1,0 +1,70 @@
+# mlx-image-runtime
+
+The engine half of ML[X] Image Server, as its own package. It turns image requests into model runs on
+[MLXEngine](https://github.com/xocialize/mlx-engine-swift) and [ForgeCore](https://github.com/xocialize/ForgeCore):
+the model catalog, routing and licence classification, the runner, request mapping, and the wire types they share.
+
+It has no HTTP server and no library. ML[X] Image Server puts its REST/MCP surface and asset library on top of it, and
+the [Pixel Agency Image Engine](https://github.com/xocialize/pixel-agency-image-engine) puts a
+[Media Engine Specification](https://github.com/xocialize/media-engine-spec) engine on top of it.
+
+Apple silicon, macOS 26, Swift 6.2.
+
+## Products
+
+| Product | What it is | Links |
+|---|---|---|
+| `ImageServerAPI` | Wire types and seam protocols: jobs, models, licence stamps, assets. No MLX. | MLXToolKit |
+| `ImageServerModels` | The runtime: `CatalogEntry`, ForgeCore's image-processing tiers (`ModelCatalog.processing()`), `ImageEngineService`, routing, `ModelRunner`, request mapping and submit validation. | ForgeCore, no generative package |
+| `ImageServerCatalog` | The generative and analysis packages: `ModelCatalog.all()`, `generative()`, `analysis()`. | every package below |
+
+Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, colorize, inpaint, matte, segment,
+quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
+
+```swift
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.1.0"),
+```
+
+## The catalog
+
+`ModelCatalog.all()` is the generative packages, then Mage-VL, then ForgeCore's tiers. Each entry carries its public
+id, the engine package id it registers under, its capabilities, maturity (`prod` or `wip`), its measured size
+envelope and its licence.
+
+| Maturity | Models |
+|---|---|
+| `prod` | Z-Image and Z-Image Turbo, FLUX.2 Klein 4B and Klein 4B Base, Qwen-Image Flash, Qwen-Image-Edit 2511, Mage-VL, ForgeCore's tiers |
+| `wip` | Mage-Flow (and Turbo, Edit), SenseNova U1.5, Ming-Image, Boogu, Anima, Qwen-Image 2.1 (Turbo and Base) |
+
+Default routing picks only `prod` models with permissive licences. Everything else runs only when a request names it.
+
+Licence classes come from each package's own declaration, classified against the engine's allowlists
+(`LicenseClassifier`): `permissive`, `evalAcknowledged` (for example Anima's CircleStone non-commercial weights) or
+`restricted` (for example Qwen-Image 2.1's Qwen Research licence). A derived asset inherits the most restrictive class
+of its model and inputs.
+
+## Weights
+
+Most packages download their weights through the engine's model store. A few read local snapshots: Boogu and Anima
+register only when theirs is found, and Qwen-Image 2.1 needs its Turbo, base and Qwen3-VL-8B snapshots to run. The
+runtime finds them through:
+
+- `MLXIMG_WEIGHTS_ROOT`: a folder holding snapshots by their usual folder names.
+- `MLXIMG_SNAPSHOT_<ID>`: one model's snapshot, for example `MLXIMG_SNAPSHOT_QWEN_IMAGE_2_1_TURBO`.
+
+## Build and test
+
+```bash
+swift build
+```
+
+```bash
+swift test
+```
+
+The tests check the catalog, licence inheritance and seed bounds without loading a model. End-to-end coverage lives
+with the users: ML[X] Image Server's test suite and the Image Engine's live conformance runs.
+
+## Licence
+
+MIT. Each model package and its weights keep their own licences; the catalog states them on every entry.
