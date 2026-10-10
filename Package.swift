@@ -25,7 +25,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.66.0"),
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.33.2"),
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.34.1"),
         // Generative packages, registered as ForgeCore `ExternalRegistration`s.
         .package(url: "https://github.com/xocialize/z-image-swift.git", from: "0.5.2"),
         .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.0"),

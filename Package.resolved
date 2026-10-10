@@ -1,5 +1,5 @@
 {
-  "originHash" : "87ae4f7bb6688da8007d623bde9ed176cbb35f253f53cc97cb790db0d8880349",
+  "originHash" : "3a6aae72c250e2d9a0568fdac6b7fc1395480a94da0fe162aacf66ec59b6fc73",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "cd907dd09b2ac2370fad981869102466b8e9f055",
-        "version" : "0.33.2"
+        "revision" : "b39c9aeb6d2dc4529197eadca9c6898559c88194",
+        "version" : "0.34.1"
       }
     },
     {
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeOptimizerKit.git",
       "state" : {
-        "revision" : "7bc45c7c4ce19feb77c3a73a0827611d1c728e4f",
-        "version" : "0.22.0"
+        "revision" : "fb15cc878785a85c857a61c41761d148b1453eae",
+        "version" : "0.23.0"
       }
     },
     {
@@ -438,8 +438,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-vosr-swift.git",
       "state" : {
-        "revision" : "acb96ab829ff0162d0b2292c222297068e7c7a33",
-        "version" : "0.2.0"
+        "revision" : "4009e3a78a0dfa38a96f124c542229766d39bc88",
+        "version" : "0.2.1"
       }
     },
     {
