@@ -1,3 +1,5 @@
+import ForgeCore
+import ForgeOptimizerKit
 import Foundation
 import Synchronization
 import ImageServerAPI
@@ -34,6 +36,9 @@ public struct RunWork: Sendable {
 /// What one engine run produced.
 public enum RunOutput: Sendable {
     case image(Image)
+    /// An upscale served through ForgeCore's still enhancer (a ×6/×8 chain, or a generative tier behind its text
+    /// guard), with what ran as the enhancer reported it, e.g. `RealPLKSR ×4 + NERVE ×2 → ×6 (Lanczos)`.
+    case upscaled(Image, model: String)
     case matte(Matte, score: Float?)
     case score(Float, subscores: [String: Float])
     /// imageAnalysis: the model's reply (prose, or the JSON a describe job asks for).
@@ -67,9 +72,43 @@ public struct MemoryFit: Sendable, Equatable {
 
 public struct EngineRunner: ModelRunner {
     public let engine: MLXServeEngine
+    /// ForgeCore's still enhancer. With it, an upscale past ×4 runs as a chain (the tier at ×4, then NERVE ×2, then
+    /// a fit down for ×6, AB-D-0119) and a generative tier runs behind the text-legibility guard (AB-D-0111). Without
+    /// it every upscale is the model's own single pass at ×2 or ×4.
+    public let enhancer: EngineImageEnhancer?
 
-    public init(engine: MLXServeEngine) {
+    public init(engine: MLXServeEngine, enhancer: EngineImageEnhancer? = nil) {
         self.engine = engine
+        self.enhancer = enhancer
+    }
+
+    /// The enhancer tier a route's model is, when it has one (NERVE fast, RealPLKSR best, VOSR2 generative, Nacre
+    /// generative-clean).
+    public static func tier(for route: RoutedModel) -> UpscaleTier? {
+        guard route.capability == .imageUpscale, route.packageID.hasPrefix("forge."),
+              let model = ForgeModel(rawValue: String(route.packageID.dropFirst("forge.".count))) else { return nil }
+        // EngineImageEnhancer.model(for:), inverted (its own inverse is main-actor isolated).
+        switch model {
+        case .upscale: return .fast
+        case .upscaleFidelity: return .best
+        case .upscaleGenerative: return .generative
+        case .upscaleNacre: return .generativeClean
+        default: return nil
+        }
+    }
+
+    /// Whether this upscale goes through the enhancer: a scale past ×4, or a generative tier at any scale.
+    func enhanced(_ work: RunWork) -> (tier: UpscaleTier, factor: UpscaleFactor)? {
+        guard enhancer != nil, let tier = Self.tier(for: work.route) else { return nil }
+        let scale = work.spec.effectiveParam("scale")?.intValue ?? 4
+        guard scale > 4 || tier.isStillOnly else { return nil }
+        let factor: UpscaleFactor = switch scale {
+        case 2: .x2
+        case 6: .x6
+        case 8: .x8
+        default: .x4
+        }
+        return (tier, factor)
     }
 
     public func residentPackages() async -> Set<String> {
@@ -88,6 +127,12 @@ public struct EngineRunner: ModelRunner {
     /// run. Scoped to this task, so it stays right if the scheduler ever runs more than one job at a time.
     public func run(_ work: RunWork, progress: @escaping @Sendable (JobProgress) -> Void) async throws -> RunOutput {
         let request = try RequestMapping.request(for: work)
+        if let enhancer, let (tier, factor) = enhanced(work), let upscale = request as? ImageUpscaleRequest {
+            let outcome = try await enhancer.upscaleReporting(try EngineImageCoding.cgImage(from: upscale.image),
+                                                              factor: factor, tier: tier)
+            return .upscaled(try EngineImageCoding.rawImage(from: outcome.image),
+                             model: outcome.upscaleModel ?? work.route.id.rawValue)
+        }
         let packageID = PackageID(work.route.packageID)
         let sink = ProgressTap.runSink(outputIndex: work.outputIndex, progress)
         let response = try await RunProgress.$sink.withValue(sink) {

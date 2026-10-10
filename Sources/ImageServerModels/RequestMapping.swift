@@ -220,8 +220,14 @@ public enum SubmitValidation {
 
         case .imageUpscale:
             if let scale = spec.effectiveParam("scale") {
-                guard let s = scale.intValue, [2, 4].contains(s) else {
-                    throw APIError.unprocessable("param_out_of_range", "scale must be 2 or 4.", param: "scale")
+                guard let s = scale.intValue, [2, 4, 6, 8].contains(s) else {
+                    throw APIError.unprocessable("param_out_of_range", "scale must be 2, 4, 6 or 8.", param: "scale")
+                }
+                // ×6 and ×8 are chains from a tiered model (AB-D-0119); the others run ×2 and ×4 only.
+                if s > 4, EngineRunner.tier(for: route) == nil {
+                    throw APIError.unprocessable("param_out_of_range",
+                                                 "\(route.id) runs ×2 and ×4; ×6 and ×8 are served from NERVE, RealPLKSR, VOSR2 or Nacre.",
+                                                 param: "scale")
                 }
             }
         case .imageRestore, .imageRelight:

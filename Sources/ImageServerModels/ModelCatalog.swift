@@ -119,7 +119,7 @@ public enum ModelCatalog {
         }
         return [
             tier("nerve-upscale", .upscale, .imageUpscale, "NERVE upscale",
-                 "Fast ×2/×4 super-resolution (Apache-2.0, CC0-trained). params.scale 2 or 4.",
+                 "Fast ×2/×4 super-resolution (Apache-2.0, CC0-trained). params.scale 2 or 4; 6 and 8 as chains.",
                  preferred: true, maxInput: 2048 * 2048),
             tier("realplksr-upscale", .upscaleFidelity, .imageUpscale, "RealPLKSR upscale",
                  "Fidelity ×4 super-resolution trained on Commons-SR (Apache-2.0).", maxInput: 2048 * 2048),
@@ -128,7 +128,11 @@ public enum ModelCatalog {
             tier("seedvr2-upscale", .upscaleQuality, .imageUpscale, "SeedVR2 upscale",
                  "Diffusion quality upscaler (SeedVR2-3B); heavy.", maxInput: 1024 * 1024),
             tier("nacre-upscale", .upscaleNacre, .imageUpscale, "Nacre upscale",
-                 "Provenance-clean generative ×4 upscaler (Apache-2.0, Commons-trained).", maxInput: 1024 * 1024),
+                 "Provenance-clean generative ×4 upscaler (Apache-2.0, Commons-trained), behind the text-legibility guard.",
+                 maxInput: 1024 * 1024),
+            tier("vosr2-upscale", .upscaleGenerative, .imageUpscale, "VOSR2 upscale",
+                 "Generative ×4 stills upscaler (Apache-2.0 DiT), behind the text-legibility guard (AB-D-0111). Stills only.",
+                 maxInput: 1024 * 1024),
             tier("nafnet-restore", .restore, .imageRestore, "NAFNet restore",
                  "Conservative general restoration (denoise/deblur).", preferred: true),
             tier("restormer-motion", .restormerMotion, .imageRestore, "Restormer motion deblur", "Motion-blur removal."),

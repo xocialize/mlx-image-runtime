@@ -18,6 +18,11 @@ Apple silicon, macOS 26, Swift 6.2.
 | `ImageServerModels` | The runtime: `CatalogEntry`, ForgeCore's image-processing tiers (`ModelCatalog.processing()`), `ImageEngineService`, routing, `ModelRunner`, request mapping and submit validation. | ForgeCore, no generative package |
 | `ImageServerCatalog` | The generative and analysis packages: `ModelCatalog.all()`, `generative()`, `analysis()`. | every package below |
 
+Upscales take `scale` 2, 4, 6 or 8. An `EngineRunner` given ForgeCore's `EngineImageEnhancer` serves ×6 and ×8 as
+chains (the model at ×4, then NERVE ×2, then a fit down for ×6) and runs the generative tiers (VOSR2, Nacre) behind
+the text-legibility guard; the result is `RunOutput.upscaled(image, model:)`, naming what ran. Without the enhancer,
+every upscale is the model's own single pass at ×2 or ×4.
+
 Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, colorize, inpaint, matte, segment,
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 

@@ -39,4 +39,30 @@ struct RuntimeTests {
     func seeds() {
         #expect(SubmitValidation.maxSeed == 9_007_199_254_740_991)
     }
+
+    @Test("Upscales: ×6 and ×8 only from a tiered model (chains); the tier map; VOSR2 in the catalog")
+    func upscaleScales() throws {
+        func route(_ id: String, _ package: String) -> RoutedModel {
+            RoutedModel(id: ModelID(id), packageID: package, capability: .imageUpscale, displayName: id,
+                        license: LicenseStamp(licenseClass: .permissive, weightLicenses: ["Apache-2.0"], portCodeLicense: "MIT"),
+                        envelope: SizeEnvelope(maxPixels: 4096 * 4096, multipleOf: 1, maxInputs: 1),
+                        defaults: GenerationDefaults(steps: nil, guidance: nil), sourceRepo: "", revision: "")
+        }
+        func spec(_ scale: Int) -> JobSpec {
+            JobSpec(capability: .imageUpscale, params: ["scale": .number(Double(scale))],
+                    inputs: ["image": [AssetID(rawValue: "ast_01TEST")]])
+        }
+        let entries = ModelCatalog.processing()
+        func package(_ id: String) -> String { entries.first { $0.id.rawValue == id }!.packageID.rawValue }
+        let realplksr = route("realplksr-upscale", package("realplksr-upscale"))
+        let heart = route("heart-upscale", package("heart-upscale"))
+        let vosr2 = route("vosr2-upscale", package("vosr2-upscale"))
+        #expect(EngineRunner.tier(for: realplksr) == .best && EngineRunner.tier(for: vosr2) == .generative)
+        #expect(EngineRunner.tier(for: route("nacre-upscale", package("nacre-upscale"))) == .generativeClean)
+        #expect(EngineRunner.tier(for: heart) == nil, "HEART stays off the tier map")
+        #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(6), route: realplksr) }
+        #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(8), route: vosr2) }
+        #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(8), route: heart) }
+        #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(3), route: realplksr) }
+    }
 }
