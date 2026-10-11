@@ -11,10 +11,10 @@ import Testing
 // hub can't be reached.
 @Suite("Weights on the hub", .serialized)
 struct HubWeightTests {
-    /// Packages that download their own weights inside `load()` (swift-transformers' `HubApi`) and declare no
-    /// `WeightSourcing`, so neither the engine nor this check can see their repos. Shrink it as they adopt engine
-    /// materialization; a new entry has to be added here on purpose.
-    static let selfFetching: Set<ModelID> = ["nafnet-restore", "ddcolor-colorize", "lama-inpaint"]
+    /// Packages that download their own weights inside `load()` and declare no `WeightSourcing`, so neither the engine
+    /// nor this check can see their repos. Empty since NAFNet, DDColor and LaMa declared theirs (AB-T-0222); a new
+    /// entry has to be added here on purpose.
+    static let selfFetching: Set<ModelID> = []
 
     @Test("Every prod model's first download resolves on the hub from an empty models folder",
           .enabled("needs huggingface.co") { await Hub.reachable() })

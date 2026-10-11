@@ -59,7 +59,7 @@ runtime finds them through:
 
 `ImageEngineService.downloadCheck(_:)` says what a model's first use would download, without downloading: each
 missing weight source listed and sized on the hub (`.pending`), nothing to fetch (`.present`), or a package that
-fetches its own weights where the engine can't see them (`.opaque`: NAFNet, DDColor and LaMa today). When a download
+fetches its own weights where the engine can't see them (`.opaque`; none in the catalog since AB-T-0222). When a download
 fails, `EngineRunner.prepare` throws `WeightDownloadError`, which names the repos and what the hub said; the engine's
 own error was a bare `httpStatus(404)` (AB-T-0221).
 
