@@ -120,7 +120,13 @@ public struct EngineRunner: ModelRunner {
         let packageID = PackageID(route.packageID)
         let poller = await ProgressTap.watchPreparation(engine, route.capability, packageID.rawValue, progress)
         defer { poller.cancel() }
-        try await engine.prepareDiscardingPackage(route.capability, package: packageID)
+        do {
+            try await engine.prepareDiscardingPackage(route.capability, package: packageID)
+        } catch let error where WeightDownloadError.isDownloadFailure(error) {
+            // The engine's download errors name no repo (AB-T-0221).
+            throw await WeightDownloadError.describing(error, model: route.id, engine: engine,
+                                                       capability: route.capability, package: packageID)
+        }
     }
 
     /// Per-run progress comes from a `RunProgress.sink` bound around `engine.run` (contract 1.51.0): the engine

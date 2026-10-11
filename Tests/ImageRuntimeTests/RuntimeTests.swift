@@ -1,7 +1,9 @@
 import Foundation
 import ImageServerAPI
 import ImageServerCatalog
-import ImageServerModels
+@testable import ImageServerModels
+import MLXHubMetadata
+import MLXServeCore
 import MLXToolKit
 import Testing
 
@@ -77,5 +79,28 @@ struct RuntimeTests {
         #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(8), route: vosr2) }
         #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(8), route: heart) }
         #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(3), route: realplksr) }
+    }
+
+    @Test("A failed download names the repo and what the hub said; other failures pass through (AB-T-0221)")
+    func downloadErrors() {
+        let missing = PendingDownload.Source(role: "snapshot", repo: "mlx-community/Z-Image-Turbo-4bit", bytes: nil)
+        let failure = WeightDownloadError(model: "z-image-turbo", sources: [missing], underlying: HubMetadataError.httpStatus(404))
+        #expect("\(failure)" == "Downloading weights for z-image-turbo from mlx-community/Z-Image-Turbo-4bit (snapshot) failed: "
+                + "the hub has no such repo or revision, or it is private or gated (HTTP 404 on its file listing).")
+        let transfer = WeightMaterializer.MaterializeError.httpStatus("transformer/a.safetensors", 503)
+        #expect("\(WeightDownloadError(model: "m", sources: [], underlying: transfer))"
+                == "Downloading weights for m failed: Download of transformer/a.safetensors failed (HTTP 503).")
+        #expect(WeightDownloadError.isDownloadFailure(HubMetadataError.httpStatus(404)))
+        #expect(WeightDownloadError.isDownloadFailure(transfer))
+        #expect(WeightDownloadError.isDownloadFailure(URLError(.notConnectedToInternet)))
+        #expect(!WeightDownloadError.isDownloadFailure(URLError(.cancelled)))
+        #expect(!WeightDownloadError.isDownloadFailure(CancellationError()))
+
+        let sized = PendingDownload(model: "m", sources: [
+            .init(role: "a", repo: "o/a", bytes: 10), .init(role: "b", repo: "o/b", bytes: 0), missing,
+        ], freeBytes: nil)
+        #expect(sized.unresolved.map(\.repo) == ["o/b", "mlx-community/Z-Image-Turbo-4bit"])
+        #expect(sized.totalBytes == nil)
+        #expect(PendingDownload(model: "m", sources: [.init(role: "a", repo: "o/a", bytes: 10)], freeBytes: nil).totalBytes == 10)
     }
 }

@@ -1,5 +1,5 @@
 {
-  "originHash" : "a41c9c49a62d4e8881fdc35f59c9fe699d52012751369987e154c95444e9a72a",
+  "originHash" : "f03d47fd49b17c7db8240e76df4f70e04d60d0ee3b2b4aaf85dbaf3c0d94c6e1",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -582,8 +582,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/z-image-swift.git",
       "state" : {
-        "revision" : "3b93473b825fb5f48a9883cdaef1e6115e8950de",
-        "version" : "0.5.2"
+        "revision" : "e5b841794d34197e83288308874fd779043b8faa",
+        "version" : "0.5.3"
       }
     }
   ],

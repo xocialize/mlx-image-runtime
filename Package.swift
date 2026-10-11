@@ -29,7 +29,8 @@ let package = Package(
         // The enhancer seam's types (UpscaleTier, UpscaleFactor) for ×6/×8 chains and the generative tiers.
         .package(url: "https://github.com/xocialize/ForgeOptimizerKit.git", from: "0.23.0"),
         // Generative packages, registered as ForgeCore `ExternalRegistration`s.
-        .package(url: "https://github.com/xocialize/z-image-swift.git", from: "0.5.2"),
+        // ≥ 0.5.3: its int8/int4 tiers download the published bf16 snapshot (AB-T-0221).
+        .package(url: "https://github.com/xocialize/z-image-swift.git", from: "0.5.3"),
         .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.0"),
         .package(url: "https://github.com/xocialize/qwen-image-edit-swift.git", from: "0.9.1"),
         // Mage-Flow (MIT weights and port; ≥ 0.9.1 carries the LICENSE file): prod since runtime 0.3.0.
@@ -53,6 +54,8 @@ let package = Package(
             "ImageServerAPI",
             .product(name: "MLXToolKit", package: "mlx-engine-swift"),
             .product(name: "MLXServeCore", package: "mlx-engine-swift"),
+            // The hub listing's error type, to name the repo a download failed on.
+            .product(name: "MLXHubMetadata", package: "mlx-engine-swift"),
             .product(name: "ForgeCore", package: "ForgeCore"),
             .product(name: "ForgeOptimizerKit", package: "ForgeOptimizerKit"),
         ]),
@@ -74,6 +77,10 @@ let package = Package(
             .product(name: "MLXQwenImage21", package: "qwen-image21-swift"),
             .product(name: "MLXMageVL", package: "mage-vl-swift"),
         ]),
-        .testTarget(name: "ImageRuntimeTests", dependencies: ["ImageServerAPI", "ImageServerModels", "ImageServerCatalog"]),
+        .testTarget(name: "ImageRuntimeTests", dependencies: [
+            "ImageServerAPI", "ImageServerModels", "ImageServerCatalog",
+            .product(name: "MLXHubMetadata", package: "mlx-engine-swift"),
+            .product(name: "MLXServeCore", package: "mlx-engine-swift"),
+        ]),
     ]
 )

@@ -57,6 +57,12 @@ runtime finds them through:
 - `MLXIMG_WEIGHTS_ROOT`: a folder holding snapshots by their usual folder names.
 - `MLXIMG_SNAPSHOT_<ID>`: one model's snapshot, for example `MLXIMG_SNAPSHOT_QWEN_IMAGE_2_1_TURBO`.
 
+`ImageEngineService.downloadCheck(_:)` says what a model's first use would download, without downloading: each
+missing weight source listed and sized on the hub (`.pending`), nothing to fetch (`.present`), or a package that
+fetches its own weights where the engine can't see them (`.opaque`: NAFNet, DDColor and LaMa today). When a download
+fails, `EngineRunner.prepare` throws `WeightDownloadError`, which names the repos and what the hub said; the engine's
+own error was a bare `httpStatus(404)` (AB-T-0221).
+
 ## Build and test
 
 ```bash
@@ -67,7 +73,8 @@ swift build
 swift test
 ```
 
-The tests check the catalog, licence inheritance and seed bounds without loading a model. End-to-end coverage lives
+The tests check the catalog, licence inheritance and seed bounds without loading a model. With network access they
+also list every prod model's first download on the hub from an empty models folder (skipped offline). End-to-end coverage lives
 with the users: ML[X] Image Server's test suite and the Image Engine's live conformance runs.
 
 ## Licence
