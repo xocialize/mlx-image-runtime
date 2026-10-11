@@ -199,13 +199,16 @@ public struct BrandManifest: Sendable, Codable, Equatable {
 }
 
 /// One deliverable a brand expects (Pixel Agency Desktop OPT-10): a format, a quality floor and sized renditions.
-/// "Web hero: web, ≥ 75, 2048 and 1080 px"; "Print proofs: native, ≥ 90".
+/// "Web hero: web, ≥ 75, 2048 and 1080 px"; "Print proofs: native, ≥ 90"; "Print master: master".
 public struct BrandDelivery: Sendable, Codable, Equatable, Hashable {
     public enum Format: String, Sendable, Codable, CaseIterable {
         /// Web delivery: WebP or JPEG, raced against PNG.
         case web
         /// The Apple-native optimize: HEIC.
         case native
+        /// A lossless 16-bit TIFF, for print and editing (Gigapixel gap G-6). Lossless, so the floor doesn't apply.
+        /// A version that doesn't know it reads it as web.
+        case master
     }
 
     public var name: String

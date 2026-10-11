@@ -25,6 +25,7 @@ struct BrandDeliveryTests {
         let manifest = BrandManifest(displayName: "Acme", delivery: [
             BrandDelivery(name: "Web hero", format: .web, floor: 75, sizes: [2048, 1080]),
             BrandDelivery(name: "Print proofs", format: .native, floor: 90),
+            BrandDelivery(name: "Print master", format: .master),
         ])
         let decoded = try JSONDecoder().decode(BrandManifest.self, from: try JSONEncoder().encode(manifest))
         #expect(decoded == manifest)
