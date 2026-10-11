@@ -266,10 +266,13 @@ public struct BrandApplication: Sendable, Codable, Equatable {
     public var referenceInputs: [AssetID]
     /// Anything that was asked but not applied, and why (e.g. a restricted preferred model without the opt-in).
     public var notes: [String]
+    /// Who owns the kit, when it isn't this library's own: a kit shared from another Desktop names its owner, a person
+    /// or a department (Pixel Agency Desktop SHARE-9), e.g. "Brand".
+    public var owner: String?
 
     public init(kitID: String, reference: String, revision: Int, resolvedBy: String, applied: [BrandAspect],
                 userPrompt: String?, effectivePrompt: String?, effectiveNegative: String?, modelSource: String,
-                params: JSONObject, referenceInputs: [AssetID], notes: [String]) {
+                params: JSONObject, referenceInputs: [AssetID], notes: [String], owner: String? = nil) {
         self.kitID = kitID
         self.reference = reference
         self.revision = revision
@@ -282,6 +285,7 @@ public struct BrandApplication: Sendable, Codable, Equatable {
         self.params = params
         self.referenceInputs = referenceInputs
         self.notes = notes
+        self.owner = owner
     }
 
     enum CodingKeys: String, CodingKey {
@@ -295,7 +299,7 @@ public struct BrandApplication: Sendable, Codable, Equatable {
         case modelSource = "model_source"
         case params
         case referenceInputs = "reference_inputs"
-        case notes
+        case notes, owner
     }
 }
 
