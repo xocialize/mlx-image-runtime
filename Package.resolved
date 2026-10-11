@@ -1,5 +1,5 @@
 {
-  "originHash" : "f0c23b31c63b9de0beded027bd78f929676ff2283ec38fe0580fc826388e1ee7",
+  "originHash" : "38ef0bc8a602ecff017a534d2f3c38f1fca4cd0d948d0bac240b2bfa17b52af2",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -483,8 +483,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/sensenova-u1-swift.git",
       "state" : {
-        "revision" : "1bbf43fc7326161dc6af03cfeaf51253dc524ee8",
-        "version" : "0.5.0"
+        "revision" : "9d201244055a3904e2e04f6ff65ca7f5cad1fec4",
+        "version" : "0.5.1"
       }
     },
     {

@@ -38,7 +38,7 @@ let package = Package(
         // Mage-Flow (MIT weights and port; ≥ 0.9.1 carries the LICENSE file): prod since runtime 0.3.0.
         .package(url: "https://github.com/xocialize/mage-flow-swift.git", from: "0.9.1"),
         // Work in progress: registered as maturity .wip (named use only, never default-routed).
-        .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.0"),
+        .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
         .package(url: "https://github.com/xocialize/ming-image-swift.git", from: "0.3.0"),
         .package(url: "https://github.com/xocialize/boogu-image-swift.git", from: "0.4.0"),
         // CircleStone non-commercial weights (evaluation): registered only when a local snapshot is configured.

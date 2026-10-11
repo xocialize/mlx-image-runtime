@@ -57,7 +57,8 @@ extension ModelCatalog {
             mageFlowEdit(.editTurbo, id: "mage-flow-edit-turbo", name: "Mage-Flow Edit Turbo", filter: mageFilter),
             mageFlowEdit(.editBase, id: "mage-flow-edit-base", name: "Mage-Flow Edit Base", filter: mageFilter),
             senseNova(.q8, id: "sensenova-u1", name: "SenseNova-U1.5"),
-            senseNova(.fast8, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
+            senseNova(.fast8V2, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
+            senseNova(.fast8, id: "sensenova-u1-fast-v1", name: "SenseNova-U1.5 8-step (V1 adapter)"),
             ming(),
         ]
         // Local-weights-only packages register only when their weights are present.
@@ -213,15 +214,25 @@ extension ModelCatalog {
 
     // MARK: - Work in progress generative (named use only)
 
+    /// SenseNova-U1.5 (sensenova-u1-swift ≥ 0.5.1, PROD since 2026-10-11, AB-R-0493). Every tier
+    /// serves T2I and instruction editing: the 8-step distill adapters touch only the generation
+    /// stream, and their 8-step cfg-1 edit matches the 50-step base edit (AB-R-0492). The fast
+    /// entry rides the V2 adapter — upstream's recommended one, which removes the V1 adapter's
+    /// shadow/highlight clipping and over-sharpening at fixed seed (AB-R-0490); the V1 tier stays
+    /// reachable by name so existing seeds keep reproducing. Prod and permissive (Apache-2.0
+    /// weights, MIT port), preferred for nothing: Z-Image Turbo / Klein keep the defaults.
     static func senseNova(_ variant: SenseNovaVariant, id: String, name: String) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")
         let configuration = SenseNovaU1Configuration(variant: variant)
-        let distilled = variant == .fast8 || variant == .fast4
+        let distilled = variant.isDistilled
         return CatalogEntry(
             id: ModelID(id), packageID: packageID, displayName: name,
             summary: "SenseNova-U1.5 8B MoT (Apache-2.0) — unified understanding + generation; sizes in multiples of 32"
-                + (distilled ? "; distilled 8-step (no editing)." : "; also instruction editing."),
-            capabilities: distilled ? [.textToImage] : [.textToImage, .imageEdit], maturity: .wip,
+                + (distilled ? "; distilled 8-step, cfg-free, also instruction editing." : "; also instruction editing."),
+            // imageAnalysis: the same resident model answers visual questions on every tier (the
+            // distill adapters leave the understanding stream untouched) — named use only; Mage-VL
+            // stays the preferred analysis tier at a quarter of the footprint.
+            capabilities: [.textToImage, .imageEdit, .imageAnalysis], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 2048 * 2048, multipleOf: 32, maxInputs: 1),
             defaults: GenerationDefaults(steps: distilled ? 8 : 50, guidance: distilled ? 1.0 : 4.0),
             quant: variant == .bf16 ? .bf16 : (variant == .fast4 ? .int4 : .int8),

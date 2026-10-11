@@ -43,6 +43,22 @@ struct RuntimeTests {
         }
     }
 
+    @Test("SenseNova-U1.5 is prod and permissive (Apache-2.0 weights, MIT port), every tier edits, preferred for nothing; the fast entry rides the V2 adapter")
+    func senseNovaIsProd() throws {
+        let entries = ModelCatalog.all(environment: [:])
+        for id in ["sensenova-u1", "sensenova-u1-fast", "sensenova-u1-fast-v1"] {
+            let entry = try #require(entries.first { $0.id.rawValue == id }, "\(id) is in the catalog")
+            #expect(entry.maturity == .prod, "\(id) is prod")
+            #expect(Set(entry.capabilities).isSuperset(of: [.textToImage, .imageEdit, .imageAnalysis]), "\(id) serves T2I, edit and VQA")
+            #expect(entry.preferredFor.isEmpty, "\(id) is not a preferred default")
+            let manifest = try #require(entry.manifest, "\(id) is a package entry")
+            #expect(LicenseClassifier.stamp(for: manifest.license, advisories: []).licenseClass == .permissive)
+        }
+        let fast = try #require(entries.first { $0.id.rawValue == "sensenova-u1-fast" })
+        #expect(fast.defaults.steps == 8 && fast.defaults.guidance == 1.0, "the distill entry carries the 8-step cfg-free recipe")
+        #expect(fast.quant == .int8)
+    }
+
     @Test("Mage-Flow's content filter is off unless MLXIMG_MAGE_CONTENT_FILTER turns it on (AB-D-0122); Edit Turbo runs int8")
     func mageContentFilter() {
         #expect(!ModelCatalog.mageContentFilter([:]))
