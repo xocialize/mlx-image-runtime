@@ -85,6 +85,24 @@ struct RuntimeTests {
         #expect(SubmitValidation.maxSeed == 9_007_199_254_740_991)
     }
 
+    @Test("Edits forward initSigma to the model's metaData (Mage-Flow's partial start, AB-D-0126); out of (0, 1] is refused")
+    func initSigma() throws {
+        let editor = RoutedModel(id: ModelID("mage-flow-edit-turbo"), packageID: "mage", capability: .imageEdit, displayName: "Mage",
+                                 license: LicenseStamp(licenseClass: .permissive, weightLicenses: ["MIT"], portCodeLicense: "MIT"),
+                                 envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, maxInputs: 3),
+                                 defaults: GenerationDefaults(steps: 4, guidance: 1), sourceRepo: "", revision: "")
+        func spec(_ params: JSONObject) -> JobSpec { JobSpec(capability: .imageEdit, params: params, count: 1) }
+        func work(_ params: JSONObject) -> RunWork {
+            RunWork(route: editor, spec: spec(params), seed: 1, width: 512, height: 512, inputs: [:], outputIndex: 0)
+        }
+        let partial = try #require(try RequestMapping.request(for: work(["prompt": "upscale", "initSigma": 0.9])) as? IEditRequest)
+        #expect(partial.metaData["initSigma"] == .double(0.9))
+        let plain = try #require(try RequestMapping.request(for: work(["prompt": "upscale"])) as? IEditRequest)
+        #expect(plain.metaData["initSigma"] == nil, "absent means a normal edit")
+        #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(["prompt": "x", "initSigma": 1.5]), route: editor) }
+        #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(["prompt": "x", "initSigma": 0]), route: editor) }
+    }
+
     @Test("Upscales: ×6 and ×8 only from a tiered model (chains); the tier map; VOSR2 in the catalog")
     func upscaleScales() throws {
         func route(_ id: String, _ package: String) -> RoutedModel {

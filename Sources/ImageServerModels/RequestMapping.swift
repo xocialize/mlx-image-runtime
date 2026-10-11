@@ -71,6 +71,9 @@ public enum RequestMapping {
         case .imageEdit:
             var meta: MetaData = [:]
             if let strength = spec.effectiveParam("strength")?.doubleValue { meta["strength"] = .double(strength) }
+            // Mage-Flow's partial start (mage-flow-swift ≥ 0.10.0; the creative upscale's creativity, AB-D-0126). Its
+            // own key, not `strength`: MES edits default strength to 0.75, which would turn every Mage edit partial.
+            if let sigma = spec.effectiveParam("initSigma")?.doubleValue { meta["initSigma"] = .double(sigma) }
             return IEditRequest(
                 images: work.inputs["images"] ?? [], prompt: spec.runPrompt,
                 negativePrompt: spec.runNegativePrompt, width: work.width, height: work.height,
@@ -209,6 +212,11 @@ public enum SubmitValidation {
                 if let s = spec.effectiveParam("strength") {
                     guard let v = s.doubleValue, (0...1).contains(v) else {
                         throw APIError.unprocessable("param_out_of_range", "strength must be in 0…1.", param: "strength")
+                    }
+                }
+                if let s = spec.effectiveParam("initSigma") {
+                    guard let v = s.doubleValue, v > 0, v <= 1 else {
+                        throw APIError.unprocessable("param_out_of_range", "initSigma must be in (0, 1].", param: "initSigma")
                     }
                 }
                 // Edits default to the model's choice (usually the first input's aspect); an explicit size must fit.

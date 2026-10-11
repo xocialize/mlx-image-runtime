@@ -36,7 +36,7 @@ let package = Package(
         .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.1"),
         .package(url: "https://github.com/xocialize/qwen-image-edit-swift.git", from: "0.9.3"),
         // Mage-Flow (MIT weights and port; ≥ 0.9.1 carries the LICENSE file): prod since runtime 0.3.0.
-        .package(url: "https://github.com/xocialize/mage-flow-swift.git", from: "0.9.1"),
+        .package(url: "https://github.com/xocialize/mage-flow-swift.git", from: "0.10.0"),
         // Work in progress: registered as maturity .wip (named use only, never default-routed).
         .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
         .package(url: "https://github.com/xocialize/ming-image-swift.git", from: "0.3.0"),
