@@ -30,9 +30,11 @@ let package = Package(
         .package(url: "https://github.com/xocialize/ForgeOptimizerKit.git", from: "0.23.0"),
         // Generative packages, registered as ForgeCore `ExternalRegistration`s.
         // ≥ 0.5.3: its int8/int4 tiers download the published bf16 snapshot (AB-T-0221).
-        .package(url: "https://github.com/xocialize/z-image-swift.git", from: "0.5.3"),
-        .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.0"),
-        .package(url: "https://github.com/xocialize/qwen-image-edit-swift.git", from: "0.9.1"),
+        // z-image ≥ 0.5.4, klein ≥ 0.8.1, qwen-image-edit ≥ 0.9.3 report RunProgress phases and
+        // denoise steps, so running jobs show step progress (AB-A-0139).
+        .package(url: "https://github.com/xocialize/z-image-swift.git", from: "0.5.4"),
+        .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.1"),
+        .package(url: "https://github.com/xocialize/qwen-image-edit-swift.git", from: "0.9.3"),
         // Mage-Flow (MIT weights and port; ≥ 0.9.1 carries the LICENSE file): prod since runtime 0.3.0.
         .package(url: "https://github.com/xocialize/mage-flow-swift.git", from: "0.9.1"),
         // Work in progress: registered as maturity .wip (named use only, never default-routed).
