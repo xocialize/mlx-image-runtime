@@ -48,13 +48,14 @@ extension ModelCatalog {
 
     public static func generative(environment: [String: String] = ProcessInfo.processInfo.environment) -> [CatalogEntry] {
         let snapshots = Snapshots(environment: environment)
+        let mageFilter = mageContentFilter(environment)
         var entries: [CatalogEntry] = [
             zImageTurbo(snapshots), kleinTurbo(), zImage(snapshots), kleinBase(), qwenImageFlash(), qwenImageEdit(),
-            mageFlow(.flow, id: "mage-flow", name: "Mage-Flow"),
-            mageFlow(.turbo, id: "mage-flow-turbo", name: "Mage-Flow Turbo"),
-            mageFlowEdit(.edit, id: "mage-flow-edit", name: "Mage-Flow Edit"),
-            mageFlowEdit(.editTurbo, id: "mage-flow-edit-turbo", name: "Mage-Flow Edit Turbo"),
-            mageFlowEdit(.editBase, id: "mage-flow-edit-base", name: "Mage-Flow Edit Base"),
+            mageFlow(.flow, id: "mage-flow", name: "Mage-Flow", filter: mageFilter),
+            mageFlow(.turbo, id: "mage-flow-turbo", name: "Mage-Flow Turbo", filter: mageFilter),
+            mageFlowEdit(.edit, id: "mage-flow-edit", name: "Mage-Flow Edit", filter: mageFilter),
+            mageFlowEdit(.editTurbo, id: "mage-flow-edit-turbo", name: "Mage-Flow Edit Turbo", filter: mageFilter),
+            mageFlowEdit(.editBase, id: "mage-flow-edit-base", name: "Mage-Flow Edit Base", filter: mageFilter),
             senseNova(.q8, id: "sensenova-u1", name: "SenseNova-U1.5"),
             senseNova(.fast8, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
             ming(),
@@ -165,13 +166,22 @@ extension ModelCatalog {
             }))
     }
 
+    /// Microsoft's content filter on Mage-Flow (its Responsible-AI screen) is off unless `MLXIMG_MAGE_CONTENT_FILTER` is
+    /// `1`, `on` or `true` (AB-D-0122). It refused benign photos in the removal gate, and on a 4-step edit it is the
+    /// slowest stage (~4 s). With it on, a refusal fails the job with the filter's verdict.
+    public static func mageContentFilter(_ environment: [String: String]) -> Bool {
+        ["1", "on", "true"].contains(environment["MLXIMG_MAGE_CONTENT_FILTER"]?.lowercased() ?? "")
+    }
+
+    static func mageFilterNote(_ filter: Bool) -> String { filter ? " Content filter on (fail-closed)." : "" }
+
     /// Mage-Flow (MIT weights and port, mage-flow-swift ≥ 0.9.1) is prod: offered by default, preferred for nothing.
-    static func mageFlow(_ variant: MageFlowVariant, id: String, name: String) -> CatalogEntry {
+    static func mageFlow(_ variant: MageFlowVariant, id: String, name: String, filter: Bool) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")
-        let configuration = MageFlowConfiguration(variant: variant, quant: .bf16)
+        let configuration = MageFlowConfiguration(variant: variant, quant: .bf16, bypassContentFilter: !filter)
         return CatalogEntry(
             id: ModelID(id), packageID: packageID, displayName: name,
-            summary: "\(name) (MIT) — square text-to-image with a fail-closed content filter.",
+            summary: "\(name) (MIT) — square text-to-image." + mageFilterNote(filter),
             capabilities: [.textToImage], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, requiresSquare: true),
             defaults: GenerationDefaults(steps: variant.defaultSteps, guidance: Double(variant.defaultGuidance)),
@@ -182,19 +192,20 @@ extension ModelCatalog {
     }
 
     /// The edit checkpoints: RL-aligned (`.edit`, 20 steps), distilled Turbo (4 steps) and Base (30 steps). Turbo and
-    /// Base are the removal gate's named route (AB-R-0464) and the Image Engine's erase tier (AB-T-0220).
-    static func mageFlowEdit(_ variant: MageFlowVariant, id: String, name: String) -> CatalogEntry {
+    /// Base are the removal gate's named route (AB-R-0464) and the Image Engine's erase tier (AB-T-0220). Turbo runs its
+    /// int8 DiT, as the gate measured it (3.5 s at 1024², 5.6 GB DiT instead of 7.7).
+    static func mageFlowEdit(_ variant: MageFlowVariant, id: String, name: String, filter: Bool) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")
-        let configuration = MageFlowConfiguration(variant: variant, quant: .bf16)
-        let tier = variant == .editTurbo ? " Distilled, 4 steps." : variant == .editBase ? " Quality tier, 30 steps." : ""
+        let quant: Quant = variant == .editTurbo ? .int8 : .bf16
+        let configuration = MageFlowConfiguration(variant: variant, quant: quant, bypassContentFilter: !filter)
+        let tier = variant == .editTurbo ? " Distilled, 4 steps, int8." : variant == .editBase ? " Quality tier, 30 steps." : ""
         return CatalogEntry(
             id: ModelID(id), packageID: packageID, displayName: name,
-            summary: "\(name) (MIT) — square instruction editing with up to 3 references and a fail-closed content filter."
-                + tier,
+            summary: "\(name) (MIT) — square instruction editing with up to 3 references." + tier + mageFilterNote(filter),
             capabilities: [.imageEdit], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, maxInputs: 3, requiresSquare: true),
             defaults: GenerationDefaults(steps: variant.defaultSteps, guidance: Double(variant.defaultGuidance)),
-            quant: .bf16,
+            quant: quant,
             source: .package(manifest: MageFlowEditPackage.manifest, register: {
                 try await $0.register(MageFlowEditPackage.registration, configuration: configuration, id: packageID)
             }))

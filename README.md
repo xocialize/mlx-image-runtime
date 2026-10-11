@@ -27,7 +27,7 @@ Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, col
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 
 ```swift
-.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.2"),
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.4"),
 ```
 
 ## The catalog
@@ -56,6 +56,10 @@ runtime finds them through:
 
 - `MLXIMG_WEIGHTS_ROOT`: a folder holding snapshots by their usual folder names.
 - `MLXIMG_SNAPSHOT_<ID>`: one model's snapshot, for example `MLXIMG_SNAPSHOT_QWEN_IMAGE_2_1_TURBO`.
+
+Mage-Flow's content filter (Microsoft's Responsible-AI screen) is off by default: it refused benign photos and is the
+slowest stage of a 4-step edit. Set `MLXIMG_MAGE_CONTENT_FILTER=1` to turn it on; a refusal then fails the job with the
+filter's verdict.
 
 `ImageEngineService.downloadCheck(_:)` says what a model's first use would download, without downloading: each
 missing weight source listed and sized on the hub (`.pending`), nothing to fetch (`.present`), or a package that

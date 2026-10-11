@@ -43,6 +43,20 @@ struct RuntimeTests {
         }
     }
 
+    @Test("Mage-Flow's content filter is off unless MLXIMG_MAGE_CONTENT_FILTER turns it on (AB-D-0122); Edit Turbo runs int8")
+    func mageContentFilter() {
+        #expect(!ModelCatalog.mageContentFilter([:]))
+        #expect(!ModelCatalog.mageContentFilter(["MLXIMG_MAGE_CONTENT_FILTER": "0"]))
+        #expect(ModelCatalog.mageContentFilter(["MLXIMG_MAGE_CONTENT_FILTER": "1"]))
+        #expect(ModelCatalog.mageContentFilter(["MLXIMG_MAGE_CONTENT_FILTER": "On"]))
+        let off = ModelCatalog.all(environment: [:]).filter { $0.id.rawValue.hasPrefix("mage-flow") }
+        let on = ModelCatalog.all(environment: ["MLXIMG_MAGE_CONTENT_FILTER": "1"]).filter { $0.id.rawValue.hasPrefix("mage-flow") }
+        #expect(off.count == 5 && on.count == 5)
+        #expect(off.allSatisfy { !$0.summary.contains("Content filter on") })
+        #expect(on.allSatisfy { $0.summary.contains("Content filter on") })
+        #expect(off.first { $0.id == "mage-flow-edit-turbo" }?.quant == .int8)
+    }
+
     @Test("A derived asset inherits the most restrictive licence class of its model and inputs")
     func licences() {
         #expect(LicenseClass.mostRestrictive([.permissive, .evalAcknowledged]) == .evalAcknowledged)
