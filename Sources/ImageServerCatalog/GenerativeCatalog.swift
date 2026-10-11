@@ -52,7 +52,9 @@ extension ModelCatalog {
             zImageTurbo(snapshots), kleinTurbo(), zImage(snapshots), kleinBase(), qwenImageFlash(), qwenImageEdit(),
             mageFlow(.flow, id: "mage-flow", name: "Mage-Flow"),
             mageFlow(.turbo, id: "mage-flow-turbo", name: "Mage-Flow Turbo"),
-            mageFlowEdit(),
+            mageFlowEdit(.edit, id: "mage-flow-edit", name: "Mage-Flow Edit"),
+            mageFlowEdit(.editTurbo, id: "mage-flow-edit-turbo", name: "Mage-Flow Edit Turbo"),
+            mageFlowEdit(.editBase, id: "mage-flow-edit-base", name: "Mage-Flow Edit Base"),
             senseNova(.q8, id: "sensenova-u1", name: "SenseNova-U1.5"),
             senseNova(.fast8, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
             ming(),
@@ -179,16 +181,19 @@ extension ModelCatalog {
             }))
     }
 
-    static func mageFlowEdit() -> CatalogEntry {
-        let packageID = PackageID("imgsrv.mage-flow-edit")
-        let configuration = MageFlowConfiguration(variant: .edit, quant: .bf16)
+    /// The edit checkpoints: RL-aligned (`.edit`, 20 steps), distilled Turbo (4 steps) and Base (30 steps). Turbo and
+    /// Base are the removal gate's named route (AB-R-0464) and the Image Engine's erase tier (AB-T-0220).
+    static func mageFlowEdit(_ variant: MageFlowVariant, id: String, name: String) -> CatalogEntry {
+        let packageID = PackageID("imgsrv.\(id)")
+        let configuration = MageFlowConfiguration(variant: variant, quant: .bf16)
+        let tier = variant == .editTurbo ? " Distilled, 4 steps." : variant == .editBase ? " Quality tier, 30 steps." : ""
         return CatalogEntry(
-            id: "mage-flow-edit", packageID: packageID, displayName: "Mage-Flow Edit",
-            summary: "Mage-Flow Edit (MIT) — square instruction editing with up to 3 references and a fail-closed content filter.",
+            id: ModelID(id), packageID: packageID, displayName: name,
+            summary: "\(name) (MIT) — square instruction editing with up to 3 references and a fail-closed content filter."
+                + tier,
             capabilities: [.imageEdit], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, maxInputs: 3, requiresSquare: true),
-            defaults: GenerationDefaults(steps: MageFlowVariant.edit.defaultSteps,
-                                         guidance: Double(MageFlowVariant.edit.defaultGuidance)),
+            defaults: GenerationDefaults(steps: variant.defaultSteps, guidance: Double(variant.defaultGuidance)),
             quant: .bf16,
             source: .package(manifest: MageFlowEditPackage.manifest, register: {
                 try await $0.register(MageFlowEditPackage.registration, configuration: configuration, id: packageID)

@@ -33,7 +33,7 @@ struct RuntimeTests {
     @Test("Mage-Flow is prod and permissive (MIT weights and port) but preferred for nothing")
     func mageFlow() {
         let all = ModelCatalog.all(environment: [:])
-        for id in ["mage-flow", "mage-flow-turbo", "mage-flow-edit"] {
+        for id in ["mage-flow", "mage-flow-turbo", "mage-flow-edit", "mage-flow-edit-turbo", "mage-flow-edit-base"] {
             guard let entry = all.first(where: { $0.id == ModelID(id) }), let manifest = entry.manifest else {
                 Issue.record("\(id) missing from the catalog"); continue
             }
