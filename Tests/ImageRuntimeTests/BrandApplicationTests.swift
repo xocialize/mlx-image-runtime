@@ -17,3 +17,22 @@ struct BrandApplicationTests {
         #expect(decoded.owner == nil && decoded.reference == "acme/core@2")
     }
 }
+
+@Suite("Brand delivery specs")
+struct BrandDeliveryTests {
+    @Test("A kit's delivery specs round-trip; manifests without them, and formats this version doesn't know, still decode")
+    func delivery() throws {
+        let manifest = BrandManifest(displayName: "Acme", delivery: [
+            BrandDelivery(name: "Web hero", format: .web, floor: 75, sizes: [2048, 1080]),
+            BrandDelivery(name: "Print proofs", format: .native, floor: 90),
+        ])
+        let decoded = try JSONDecoder().decode(BrandManifest.self, from: try JSONEncoder().encode(manifest))
+        #expect(decoded == manifest)
+
+        let old = try JSONDecoder().decode(BrandManifest.self, from: Data(#"{"displayName":"Acme","rules":["Sentence case"]}"#.utf8))
+        #expect(old.delivery.isEmpty && old.rules == ["Sentence case"])
+
+        let future = try JSONDecoder().decode(BrandManifest.self, from: Data(#"{"delivery":[{"name":"Billboard","format":"jxl","sizes":[8192]}]}"#.utf8))
+        #expect(future.delivery == [BrandDelivery(name: "Billboard", format: .web, floor: 75, sizes: [8192])])
+    }
+}

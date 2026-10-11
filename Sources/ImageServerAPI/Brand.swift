@@ -163,10 +163,12 @@ public struct BrandManifest: Sendable, Codable, Equatable {
     public var assets: [BrandAssetRef]
     /// When imported from a style.json: its (company, style, version).
     public var source: JSONObject?
+    /// The deliverables the brand expects (formats, quality floors, sizes), which an optimizer applies.
+    public var delivery: [BrandDelivery]
 
     public init(displayName: String? = nil, colour: BrandColour? = nil, fonts: JSONValue? = nil,
                 licence: BrandLicence? = nil, rules: [String] = [], generation: BrandGeneration? = nil,
-                assets: [BrandAssetRef] = [], source: JSONObject? = nil) {
+                assets: [BrandAssetRef] = [], source: JSONObject? = nil, delivery: [BrandDelivery] = []) {
         self.displayName = displayName
         self.colour = colour
         self.fonts = fonts
@@ -175,10 +177,11 @@ public struct BrandManifest: Sendable, Codable, Equatable {
         self.generation = generation
         self.assets = assets
         self.source = source
+        self.delivery = delivery
     }
 
     enum CodingKeys: String, CodingKey {
-        case displayName, colour, fonts, licence, rules, generation, assets, source
+        case displayName, colour, fonts, licence, rules, generation, assets, source, delivery
     }
 
     public init(from decoder: Decoder) throws {
@@ -191,6 +194,43 @@ public struct BrandManifest: Sendable, Codable, Equatable {
         generation = try c.decodeIfPresent(BrandGeneration.self, forKey: .generation)
         assets = try c.decodeIfPresent([BrandAssetRef].self, forKey: .assets) ?? []
         source = try c.decodeIfPresent(JSONObject.self, forKey: .source)
+        delivery = try c.decodeIfPresent([BrandDelivery].self, forKey: .delivery) ?? []
+    }
+}
+
+/// One deliverable a brand expects (Pixel Agency Desktop OPT-10): a format, a quality floor and sized renditions.
+/// "Web hero: web, ≥ 75, 2048 and 1080 px"; "Print proofs: native, ≥ 90".
+public struct BrandDelivery: Sendable, Codable, Equatable, Hashable {
+    public enum Format: String, Sendable, Codable, CaseIterable {
+        /// Web delivery: WebP or JPEG, raced against PNG.
+        case web
+        /// The Apple-native optimize: HEIC.
+        case native
+    }
+
+    public var name: String
+    public var format: Format
+    /// The SSIMULACRA2 floor: 90 visually lossless, 80 balanced, 75 consumer web, 70 aggressive.
+    public var floor: Double
+    /// Sized renditions, by long edge in px (largest first).
+    public var sizes: [Int]
+
+    public init(name: String, format: Format = .web, floor: Double = 75, sizes: [Int] = []) {
+        self.name = name
+        self.format = format
+        self.floor = floor
+        self.sizes = sizes
+    }
+
+    enum CodingKeys: String, CodingKey { case name, format, floor, sizes }
+
+    /// Lenient: a format this version doesn't know is web, a missing floor is 75.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        format = (try? c.decodeIfPresent(String.self, forKey: .format)).flatMap(Format.init(rawValue:)) ?? .web
+        floor = try c.decodeIfPresent(Double.self, forKey: .floor) ?? 75
+        sizes = try c.decodeIfPresent([Int].self, forKey: .sizes) ?? []
     }
 }
 
