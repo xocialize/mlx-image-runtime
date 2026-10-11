@@ -1,5 +1,5 @@
 {
-  "originHash" : "3a6aae72c250e2d9a0568fdac6b7fc1395480a94da0fe162aacf66ec59b6fc73",
+  "originHash" : "a41c9c49a62d4e8881fdc35f59c9fe699d52012751369987e154c95444e9a72a",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mage-flow-swift.git",
       "state" : {
-        "revision" : "0bfd186afc63a42255f43ca433451f80a7c66822",
-        "version" : "0.9.0"
+        "revision" : "eee8c412120ea639d0ccf4fe83ace97a16be620b",
+        "version" : "0.9.1"
       }
     },
     {

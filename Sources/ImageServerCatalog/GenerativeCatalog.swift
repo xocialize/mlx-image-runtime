@@ -163,15 +163,14 @@ extension ModelCatalog {
             }))
     }
 
-    // MARK: - Work in progress generative (named use only)
-
+    /// Mage-Flow (MIT weights and port, mage-flow-swift ≥ 0.9.1) is prod: offered by default, preferred for nothing.
     static func mageFlow(_ variant: MageFlowVariant, id: String, name: String) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")
         let configuration = MageFlowConfiguration(variant: variant, quant: .bf16)
         return CatalogEntry(
             id: ModelID(id), packageID: packageID, displayName: name,
             summary: "\(name) (MIT) — square text-to-image with a fail-closed content filter.",
-            capabilities: [.textToImage], maturity: .wip,
+            capabilities: [.textToImage], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, requiresSquare: true),
             defaults: GenerationDefaults(steps: variant.defaultSteps, guidance: Double(variant.defaultGuidance)),
             quant: .bf16,
@@ -186,7 +185,7 @@ extension ModelCatalog {
         return CatalogEntry(
             id: "mage-flow-edit", packageID: packageID, displayName: "Mage-Flow Edit",
             summary: "Mage-Flow Edit (MIT) — square instruction editing with up to 3 references and a fail-closed content filter.",
-            capabilities: [.imageEdit], maturity: .wip,
+            capabilities: [.imageEdit], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, maxInputs: 3, requiresSquare: true),
             defaults: GenerationDefaults(steps: MageFlowVariant.edit.defaultSteps,
                                          guidance: Double(MageFlowVariant.edit.defaultGuidance)),
@@ -195,6 +194,8 @@ extension ModelCatalog {
                 try await $0.register(MageFlowEditPackage.registration, configuration: configuration, id: packageID)
             }))
     }
+
+    // MARK: - Work in progress generative (named use only)
 
     static func senseNova(_ variant: SenseNovaVariant, id: String, name: String) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")

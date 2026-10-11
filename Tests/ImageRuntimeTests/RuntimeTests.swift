@@ -28,6 +28,19 @@ struct RuntimeTests {
         #expect(Array(all.suffix(ModelCatalog.processing().count)).map(\.id) == ModelCatalog.processing().map(\.id))
     }
 
+    @Test("Mage-Flow is prod and permissive (MIT weights and port) but preferred for nothing")
+    func mageFlow() {
+        let all = ModelCatalog.all(environment: [:])
+        for id in ["mage-flow", "mage-flow-turbo", "mage-flow-edit"] {
+            guard let entry = all.first(where: { $0.id == ModelID(id) }), let manifest = entry.manifest else {
+                Issue.record("\(id) missing from the catalog"); continue
+            }
+            #expect(entry.maturity == .prod, "\(id) is prod")
+            #expect(entry.preferredFor.isEmpty, "\(id) is not a preferred default")
+            #expect(LicenseClassifier.stamp(for: manifest.license, advisories: []).licenseClass == .permissive)
+        }
+    }
+
     @Test("A derived asset inherits the most restrictive licence class of its model and inputs")
     func licences() {
         #expect(LicenseClass.mostRestrictive([.permissive, .evalAcknowledged]) == .evalAcknowledged)

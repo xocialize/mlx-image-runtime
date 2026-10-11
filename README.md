@@ -27,7 +27,7 @@ Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, col
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 
 ```swift
-.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.1.0"),
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.0"),
 ```
 
 ## The catalog
@@ -38,8 +38,8 @@ envelope and its licence.
 
 | Maturity | Models |
 |---|---|
-| `prod` | Z-Image and Z-Image Turbo, FLUX.2 Klein 4B and Klein 4B Base, Qwen-Image Flash, Qwen-Image-Edit 2511, Mage-VL, ForgeCore's tiers |
-| `wip` | Mage-Flow (and Turbo, Edit), SenseNova U1.5, Ming-Image, Boogu, Anima, Qwen-Image 2.1 (Turbo and Base) |
+| `prod` | Z-Image and Z-Image Turbo, FLUX.2 Klein 4B and Klein 4B Base, Qwen-Image Flash, Qwen-Image-Edit 2511, Mage-Flow (and Turbo, Edit), Mage-VL, ForgeCore's tiers |
+| `wip` | SenseNova U1.5, Ming-Image, Boogu, Anima, Qwen-Image 2.1 (Turbo and Base) |
 
 Default routing picks only `prod` models with permissive licences. Everything else runs only when a request names it.
 
