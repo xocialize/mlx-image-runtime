@@ -25,7 +25,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.66.0"),
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.34.1"),
+        // ≥ 0.35.0: EngineImageCoding.rawImage(from:keepingDepth:), so an enhancer result keeps a 16-bit request's depth.
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.35.0"),
         // The enhancer seam's types (UpscaleTier, UpscaleFactor) for ×6/×8 chains and the generative tiers.
         .package(url: "https://github.com/xocialize/ForgeOptimizerKit.git", from: "0.23.0"),
         // Generative packages, registered as ForgeCore `ExternalRegistration`s.

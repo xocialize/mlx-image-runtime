@@ -1,5 +1,5 @@
 {
-  "originHash" : "00feaf0be937761072e4408588e7a15b599ebe04418655d377606ea733466ab3",
+  "originHash" : "8eddd2a07a6d285ddc284669f210b90a2751ca1548730aabe1213baaf63b698a",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "b39c9aeb6d2dc4529197eadca9c6898559c88194",
-        "version" : "0.34.1"
+        "revision" : "4c4f6407eea93d6e35cc201b2e0f10dc4caa7d9b",
+        "version" : "0.38.0"
       }
     },
     {
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeOptimizerKit.git",
       "state" : {
-        "revision" : "fb15cc878785a85c857a61c41761d148b1453eae",
-        "version" : "0.23.0"
+        "revision" : "c9b5f5d193aad5ca5910014711d1e8c5577bdd80",
+        "version" : "0.24.0"
       }
     },
     {
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/MaskKit.git",
       "state" : {
-        "revision" : "db4c9dae9e09a67bfb798683e30e979f9338ef26",
-        "version" : "0.4.0"
+        "revision" : "5447fa2ab17e2e2e2d1d8aa5048f684d53b072dd",
+        "version" : "0.4.1"
       }
     },
     {
@@ -240,8 +240,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-engine-swift.git",
       "state" : {
-        "revision" : "46b134a3e2f01fe4079707ebe2d675b82d90dc93",
-        "version" : "0.66.0"
+        "revision" : "aba512f37c8228adce4cac682583acea612bd6f7",
+        "version" : "0.67.0"
       }
     },
     {
@@ -267,8 +267,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-gfpgan-swift.git",
       "state" : {
-        "revision" : "2913dfad00206b86894db9d4b4f8a2c7f61967ce",
-        "version" : "0.2.1"
+        "revision" : "0d4bcbacc92a5bf8799c4ba4f801718135b6f074",
+        "version" : "0.3.0"
       }
     },
     {
@@ -276,8 +276,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-heart-swift.git",
       "state" : {
-        "revision" : "193099e74b1e135f7f47db1a4964b28dbacfa67b",
-        "version" : "0.1.0"
+        "revision" : "ed8b6cd0490daa2c59c9e92a7a81f0e35cd7905b",
+        "version" : "0.2.1"
       }
     },
     {
@@ -303,8 +303,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-nafnet-swift.git",
       "state" : {
-        "revision" : "06e2bbe07748ea29363310659ab1b3a288111769",
-        "version" : "0.5.0"
+        "revision" : "239268046055c7cf078b5da59dfc7dcc342c79ec",
+        "version" : "0.6.0"
       }
     },
     {
@@ -312,8 +312,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-nerve-swift.git",
       "state" : {
-        "revision" : "bcfe71eba07dd25b4d29317471404858fb462488",
-        "version" : "0.1.0"
+        "revision" : "61671d55a326169538067765b58cfea987ffe52a",
+        "version" : "0.2.1"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-realesrgan-swift",
       "state" : {
-        "revision" : "f28e58a5393513f526e8f8dca66fcd2db8fdb13d",
-        "version" : "0.7.0"
+        "revision" : "d586e13a2c2a5514db05cda351dbdb9afab9ff6b",
+        "version" : "0.9.1"
       }
     },
     {
@@ -339,8 +339,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-realplksr-swift.git",
       "state" : {
-        "revision" : "ff2e7f3b330fb18563741d2c8edb997624e6fa48",
-        "version" : "0.1.2"
+        "revision" : "031bb8ca00f142b43f9423d39a115cb7c56ce52b",
+        "version" : "0.2.1"
       }
     },
     {
@@ -348,8 +348,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-restoreformer-swift.git",
       "state" : {
-        "revision" : "c0a0106e118b4578889d22524af7c702b73fac7c",
-        "version" : "0.2.1"
+        "revision" : "6d61c4679561a6fc7614c1ceb76ea910e9766402",
+        "version" : "0.3.0"
       }
     },
     {
@@ -393,8 +393,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-seedvr2-swift.git",
       "state" : {
-        "revision" : "c6d91863c2d4af79a65f183774e569513037f055",
-        "version" : "0.10.0"
+        "revision" : "92ce47312dcdfde31f1c685c8e2799937eb16e9e",
+        "version" : "0.10.1"
       }
     },
     {
@@ -438,8 +438,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-vosr-swift.git",
       "state" : {
-        "revision" : "4009e3a78a0dfa38a96f124c542229766d39bc88",
-        "version" : "0.2.1"
+        "revision" : "c18503010d8efcdc55e10c7301ff5fbb2978acd5",
+        "version" : "0.3.0"
       }
     },
     {

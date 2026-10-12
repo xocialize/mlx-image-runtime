@@ -152,7 +152,9 @@ public struct EngineRunner: ModelRunner {
         if let enhancer, let (tier, factor) = enhanced(work), let upscale = request as? ImageUpscaleRequest {
             let outcome = try await enhancer.upscaleReporting(try EngineImageCoding.cgImage(from: upscale.image),
                                                               factor: factor, tier: tier)
-            return .upscaled(try EngineImageCoding.rawImage(from: outcome.image),
+            // A 16-bit request (`.rawRGBA16`, sent only to a route that keeps 16 bits: VOSR2 ≥ 0.3.0) gets the enhancer's
+            // answer at 16 bits; an 8-bit one at 8, as before (AB-T-0233).
+            return .upscaled(try EngineImageCoding.rawImage(from: outcome.image, keepingDepth: upscale.image.format == .rawRGBA16),
                              model: outcome.upscaleModel ?? work.route.id.rawValue)
         }
         let packageID = PackageID(work.route.packageID)
