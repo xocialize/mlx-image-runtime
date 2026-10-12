@@ -27,7 +27,7 @@ Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, col
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 
 ```swift
-.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.4"),
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.5.0"),
 ```
 
 ## The catalog
@@ -60,6 +60,25 @@ runtime finds them through:
 Mage-Flow's content filter (Microsoft's Responsible-AI screen) is off by default: it refused benign photos and is the
 slowest stage of a 4-step edit. Set `MLXIMG_MAGE_CONTENT_FILTER=1` to turn it on; a refusal then fails the job with the
 filter's verdict.
+
+### Mage-Flow-Edit on small Macs
+
+Mage-Flow-Edit holds two big models: the Qwen3-VL conditioner (8.3 GB) and the DiT (5.6 GB at int8). How they stay in
+memory follows the Mac (`ModelCatalog.mageResidency`):
+
+| Mac | Residency | Peak (int8 Turbo, 1024²) |
+|---|---|---|
+| 32 GB or more | `resident`: both stay loaded | about 17 GB |
+| below 32 GB | `evict-all`: the conditioner and the DiT take turns, and neither stays between requests | about 10 GB |
+
+`MLXIMG_MAGE_RESIDENCY` (`resident`, `evict-conditioner`, `evict-all`) overrides it. Taking turns costs one load of each
+model per request, so a job that edits many images at once sends them in one request with the package's `tiles` mode
+(mage-flow-swift ≥ 0.11.0; `RequestMapping` passes `mode`, the images, the tile side, the base seed and `initSigma`
+through unchanged). The Pixel Agency Image Engine's creative upscale does this.
+
+`EngineRunner.machineFit` also reports the engine's projected peak for a model and the engine's memory budget on this
+Mac (`MemoryFit.projectedPeakBytes`, `budgetBytes`, `fitsBudget`), so a host can tell "doesn't fit right now" from
+"never fits this Mac".
 
 `ImageEngineService.downloadCheck(_:)` says what a model's first use would download, without downloading: each
 missing weight source listed and sized on the hub (`.pending`), nothing to fetch (`.present`), or a package that

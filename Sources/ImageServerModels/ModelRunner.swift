@@ -56,17 +56,32 @@ public protocol ModelRunner: Sendable {
 
 /// The engine's machine-level fit check, reduced to what the scheduler acts on.
 public struct MemoryFit: Sendable, Equatable {
+    /// Whether the run fits what the machine has available now.
     public var fits: Bool
     /// What still has to come from the machine between now and the run's peak.
     public var additionalBytes: UInt64
     public var availableBytes: UInt64
     public var message: String
+    /// The engine's projected peak for the run: what is resident now, plus the model at its configured residency
+    /// (its weights and its own activation). With nothing else loaded it is the model's own peak.
+    public var projectedPeakBytes: UInt64?
+    /// The engine's memory budget on this Mac (Metal's recommended GPU working set).
+    public var budgetBytes: UInt64?
 
-    public init(fits: Bool, additionalBytes: UInt64, availableBytes: UInt64, message: String) {
+    public init(fits: Bool, additionalBytes: UInt64, availableBytes: UInt64, message: String,
+                projectedPeakBytes: UInt64? = nil, budgetBytes: UInt64? = nil) {
         self.fits = fits
         self.additionalBytes = additionalBytes
         self.availableBytes = availableBytes
         self.message = message
+        self.projectedPeakBytes = projectedPeakBytes
+        self.budgetBytes = budgetBytes
+    }
+
+    /// Whether the projected peak fits this Mac's budget at all — once idle models are released — or nil when unknown.
+    public var fitsBudget: Bool? {
+        guard let projectedPeakBytes, let budgetBytes else { return nil }
+        return projectedPeakBytes <= budgetBytes
     }
 }
 
@@ -156,7 +171,8 @@ public struct EngineRunner: ModelRunner {
         guard let advisory = try? await engine.machineFitAdvisory(route.capability, package: PackageID(route.packageID))
         else { return nil }
         return MemoryFit(fits: advisory.fits, additionalBytes: advisory.additionalBytes,
-                         availableBytes: advisory.machine.availableBytes, message: advisory.message)
+                         availableBytes: advisory.machine.availableBytes, message: advisory.message,
+                         projectedPeakBytes: advisory.projectedPeakBytes, budgetBytes: await engine.memory.budgetBytes)
     }
 }
 

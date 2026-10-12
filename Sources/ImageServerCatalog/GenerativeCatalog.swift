@@ -49,13 +49,16 @@ extension ModelCatalog {
     public static func generative(environment: [String: String] = ProcessInfo.processInfo.environment) -> [CatalogEntry] {
         let snapshots = Snapshots(environment: environment)
         let mageFilter = mageContentFilter(environment)
+        let residency = mageResidency(environment)
         var entries: [CatalogEntry] = [
             zImageTurbo(snapshots), kleinTurbo(), zImage(snapshots), kleinBase(), qwenImageFlash(), qwenImageEdit(),
             mageFlow(.flow, id: "mage-flow", name: "Mage-Flow", filter: mageFilter),
             mageFlow(.turbo, id: "mage-flow-turbo", name: "Mage-Flow Turbo", filter: mageFilter),
-            mageFlowEdit(.edit, id: "mage-flow-edit", name: "Mage-Flow Edit", filter: mageFilter),
-            mageFlowEdit(.editTurbo, id: "mage-flow-edit-turbo", name: "Mage-Flow Edit Turbo", filter: mageFilter),
-            mageFlowEdit(.editBase, id: "mage-flow-edit-base", name: "Mage-Flow Edit Base", filter: mageFilter),
+            mageFlowEdit(.edit, id: "mage-flow-edit", name: "Mage-Flow Edit", filter: mageFilter, residency: residency),
+            mageFlowEdit(.editTurbo, id: "mage-flow-edit-turbo", name: "Mage-Flow Edit Turbo", filter: mageFilter,
+                         residency: residency),
+            mageFlowEdit(.editBase, id: "mage-flow-edit-base", name: "Mage-Flow Edit Base", filter: mageFilter,
+                         residency: residency),
             senseNova(.q8, id: "sensenova-u1", name: "SenseNova-U1.5"),
             senseNova(.fast8V2, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
             senseNova(.fast8, id: "sensenova-u1-fast-v1", name: "SenseNova-U1.5 8-step (V1 adapter)"),
@@ -176,6 +179,25 @@ extension ModelCatalog {
 
     static func mageFilterNote(_ filter: Bool) -> String { filter ? " Content filter on (fail-closed)." : "" }
 
+    /// How Mage-Flow-Edit holds its two big models on this Mac (the creative upscale's small-Mac path, AB-D-0126).
+    public enum MageResidency: String, Sendable, CaseIterable {
+        /// Conditioner and DiT stay loaded: about 17 GB at the peak (int8 Turbo).
+        case resident
+        /// The Qwen3-VL conditioner leaves after each encode: about 15 GB at the peak.
+        case evictConditioner = "evict-conditioner"
+        /// The conditioner and the DiT take turns and neither stays between requests: about 10 GB at the peak, one load
+        /// of each per request — the `tiles` mode makes that one per creative upscale, not one per tile.
+        case evictAll = "evict-all"
+    }
+
+    /// Below 32 GB the models take turns (`evictAll`); from 32 GB they stay resident. `MLXIMG_MAGE_RESIDENCY`
+    /// (`resident`, `evict-conditioner`, `evict-all`) overrides it, for a Mac shared with other work or to measure.
+    public static func mageResidency(_ environment: [String: String],
+                                     physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> MageResidency {
+        if let raw = environment["MLXIMG_MAGE_RESIDENCY"]?.lowercased(), let chosen = MageResidency(rawValue: raw) { return chosen }
+        return physicalMemory < 32 << 30 ? .evictAll : .resident
+    }
+
     /// Mage-Flow (MIT weights and port, mage-flow-swift ≥ 0.9.1) is prod: offered by default, preferred for nothing.
     static func mageFlow(_ variant: MageFlowVariant, id: String, name: String, filter: Bool) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")
@@ -195,14 +217,21 @@ extension ModelCatalog {
     /// The edit checkpoints: RL-aligned (`.edit`, 20 steps), distilled Turbo (4 steps) and Base (30 steps). Turbo and
     /// Base are the removal gate's named route (AB-R-0464) and the Image Engine's erase tier (AB-T-0220). Turbo runs its
     /// int8 DiT, as the gate measured it (3.5 s at 1024², 5.6 GB DiT instead of 7.7).
-    static func mageFlowEdit(_ variant: MageFlowVariant, id: String, name: String, filter: Bool) -> CatalogEntry {
+    /// Mage-Flow-Edit (mage-flow-swift ≥ 0.11.0): the `tiles` mode edits N images in one request with one conditioner
+    /// load, and `residency` sets which models stay loaded (`mageResidency`).
+    static func mageFlowEdit(_ variant: MageFlowVariant, id: String, name: String, filter: Bool,
+                             residency: MageResidency = .resident) -> CatalogEntry {
         let packageID = PackageID("imgsrv.\(id)")
         let quant: Quant = variant == .editTurbo ? .int8 : .bf16
-        let configuration = MageFlowConfiguration(variant: variant, quant: quant, bypassContentFilter: !filter)
+        let configuration = MageFlowConfiguration(variant: variant, quant: quant,
+                                                  evictConditioner: residency == .evictConditioner,
+                                                  evictTransformer: residency == .evictAll, bypassContentFilter: !filter)
         let tier = variant == .editTurbo ? " Distilled, 4 steps, int8." : variant == .editBase ? " Quality tier, 30 steps." : ""
+        let turns = residency == .resident ? "" : " Conditioner and DiT load per request (small-Mac residency)."
         return CatalogEntry(
             id: ModelID(id), packageID: packageID, displayName: name,
-            summary: "\(name) (MIT) — square instruction editing with up to 3 references." + tier + mageFilterNote(filter),
+            summary: "\(name) (MIT) — square instruction editing with up to 3 references; the tiles mode edits many "
+                + "images at once." + tier + turns + mageFilterNote(filter),
             capabilities: [.imageEdit], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, maxInputs: 3, requiresSquare: true),
             defaults: GenerationDefaults(steps: variant.defaultSteps, guidance: Double(variant.defaultGuidance)),

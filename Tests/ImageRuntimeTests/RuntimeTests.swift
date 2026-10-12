@@ -3,6 +3,7 @@ import ImageServerAPI
 import ImageServerCatalog
 @testable import ImageServerModels
 import MLXHubMetadata
+import MLXMageFlow
 import MLXServeCore
 import MLXToolKit
 import Testing
@@ -101,6 +102,51 @@ struct RuntimeTests {
         #expect(plain.metaData["initSigma"] == nil, "absent means a normal edit")
         #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(["prompt": "x", "initSigma": 1.5]), route: editor) }
         #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(["prompt": "x", "initSigma": 0]), route: editor) }
+    }
+
+    @Test("Mage-Flow-Edit's tiles mode reaches the model whole: every image, the tile side, the base seed and initSigma (mage-flow-swift ≥ 0.11.0)")
+    func tilesMode() throws {
+        let editor = RoutedModel(id: ModelID("mage-flow-edit-turbo"), packageID: "mage", capability: .imageEdit, displayName: "Mage",
+                                 license: LicenseStamp(licenseClass: .permissive, weightLicenses: ["MIT"], portCodeLicense: "MIT"),
+                                 envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16, maxInputs: 3),
+                                 defaults: GenerationDefaults(steps: 4, guidance: 1), sourceRepo: "", revision: "")
+        let tiles = (0..<7).map { _ in Image(format: .png, data: Data(), width: 896, height: 896) }
+        let work = RunWork(route: editor, spec: JobSpec(capability: .imageEdit, mode: "tiles",
+                                                         params: ["prompt": "upscale", "initSigma": 0.9], count: 1),
+                           seed: 41, width: 896, height: 896, inputs: ["images": tiles], outputIndex: 0)
+        let request = try #require(try RequestMapping.request(for: work) as? IEditRequest)
+        #expect(request.mode?.rawValue == "tiles")
+        #expect(request.images.count == 7, "a tiles request is not held to the 3-reference envelope")
+        #expect(request.width == 896 && request.height == 896)
+        #expect(request.seed == 41, "tile k runs at seed + k inside the package")
+        #expect(request.metaData["initSigma"] == .double(0.9))
+        #expect(MageFlowModes.tiles.rawValue == "tiles")
+        #expect(MageFlowEditPackage.manifest.surfaces.first?.supportedModes.contains(MageFlowModes.tiles) == true)
+    }
+
+    @Test("Mage-Flow-Edit's residency follows the Mac: below 32 GB the conditioner and DiT take turns; MLXIMG_MAGE_RESIDENCY overrides")
+    func mageResidency() {
+        #expect(ModelCatalog.mageResidency([:], physicalMemory: 16 << 30) == .evictAll)
+        #expect(ModelCatalog.mageResidency([:], physicalMemory: 24 << 30) == .evictAll)
+        #expect(ModelCatalog.mageResidency([:], physicalMemory: 32 << 30) == .resident)
+        #expect(ModelCatalog.mageResidency([:], physicalMemory: 128 << 30) == .resident)
+        #expect(ModelCatalog.mageResidency(["MLXIMG_MAGE_RESIDENCY": "evict-all"], physicalMemory: 128 << 30) == .evictAll)
+        #expect(ModelCatalog.mageResidency(["MLXIMG_MAGE_RESIDENCY": "Evict-Conditioner"], physicalMemory: 128 << 30) == .evictConditioner)
+        #expect(ModelCatalog.mageResidency(["MLXIMG_MAGE_RESIDENCY": "resident"], physicalMemory: 16 << 30) == .resident)
+        #expect(ModelCatalog.mageResidency(["MLXIMG_MAGE_RESIDENCY": "bogus"], physicalMemory: 16 << 30) == .evictAll)
+        let light = ModelCatalog.all(environment: ["MLXIMG_MAGE_RESIDENCY": "evict-all"]).first { $0.id == "mage-flow-edit-turbo" }
+        #expect(light?.summary.contains("small-Mac residency") == true)
+        let resident = ModelCatalog.all(environment: ["MLXIMG_MAGE_RESIDENCY": "resident"]).first { $0.id == "mage-flow-edit-turbo" }
+        #expect(resident?.summary.contains("small-Mac residency") == false)
+    }
+
+    @Test("MemoryFit: a projected peak within the budget fits the Mac once idle models are released")
+    func memoryFitBudget() {
+        #expect(MemoryFit(fits: false, additionalBytes: 0, availableBytes: 0, message: "").fitsBudget == nil)
+        #expect(MemoryFit(fits: false, additionalBytes: 0, availableBytes: 0, message: "",
+                          projectedPeakBytes: 9_700_000_000, budgetBytes: 12_700_000_000).fitsBudget == true)
+        #expect(MemoryFit(fits: true, additionalBytes: 0, availableBytes: 0, message: "",
+                          projectedPeakBytes: 17_100_000_000, budgetBytes: 12_700_000_000).fitsBudget == false)
     }
 
     @Test("Upscales: ×6 and ×8 only from a tiered model (chains); the tier map; VOSR2 in the catalog")
