@@ -133,6 +133,10 @@ public enum ModelCatalog {
             tier("vosr2-upscale", .upscaleGenerative, .imageUpscale, "VOSR2 upscale",
                  "Generative ×4 stills upscaler (Apache-2.0 DiT), behind the text-legibility guard (AB-D-0111). Stills only.",
                  maxInput: 1024 * 1024),
+            tier("anime4k-upscale", .upscaleInstant, .imageUpscale, "Anime4K VL",
+                 "Instant, model-free ×2 upscaler on Metal shaders (MIT, nothing to download); ×4/×8 by doubling, ×6 fitted "
+                 + "from ×8. The efficient choice, not a quality rival to the learned tiers (AB-D-0146).",
+                 maxInput: 2048 * 2048),
             tier("nafnet-restore", .restore, .imageRestore, "NAFNet restore",
                  "Conservative general restoration (denoise/deblur).", preferred: true),
             tier("restormer-motion", .restormerMotion, .imageRestore, "Restormer motion deblur", "Motion-blur removal."),

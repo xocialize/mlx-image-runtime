@@ -98,7 +98,7 @@ public struct EngineRunner: ModelRunner {
     }
 
     /// The enhancer tier a route's model is, when it has one (NERVE fast, RealPLKSR best, VOSR2 generative, Nacre
-    /// generative-clean).
+    /// generative-clean, Anime4K VL instant).
     public static func tier(for route: RoutedModel) -> UpscaleTier? {
         // By the model's catalog id: a route carries the engine's registration id, not the catalog's package id.
         guard route.capability == .imageUpscale,
@@ -109,6 +109,8 @@ public struct EngineRunner: ModelRunner {
         case .upscaleFidelity: return .best
         case .upscaleGenerative: return .generative
         case .upscaleNacre: return .generativeClean
+        // Anime4K VL: the registration serves ×2 and ×4; ×6/×8 go through the enhancer so the receipt names the fit.
+        case .upscaleInstant: return .instant
         default: return nil
         }
     }

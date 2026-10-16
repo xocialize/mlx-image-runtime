@@ -23,6 +23,10 @@ chains (the model at ×4, then NERVE ×2, then a fit down for ×6) and runs the 
 the text-legibility guard; the result is `RunOutput.upscaled(image, model:)`, naming what ran. Without the enhancer,
 every upscale is the model's own single pass at ×2 or ×4.
 
+`anime4k-upscale` (Anime4K VL, 0.6.0) is the Instant tier: ForgeCore's weightless registration (Metal shaders, MIT,
+nothing to download). It serves ×2 and ×4 itself; with the enhancer, ×6 and ×8 run as its own doublings (×6 fitted
+from ×8), named so in `RunOutput.upscaled`. Offered by name, never a default route.
+
 Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, colorize, inpaint, matte, segment,
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 

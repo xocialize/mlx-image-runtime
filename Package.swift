@@ -26,9 +26,12 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.66.0"),
         // ≥ 0.35.0: EngineImageCoding.rawImage(from:keepingDepth:), so an enhancer result keeps a 16-bit request's depth.
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.35.0"),
+        // ≥ 0.41.1: `.upscaleInstant`, Anime4K VL as a weightless imageUpscale registration (`anime4k-upscale`, AB-A-0183)
+        // that reads as nothing to download.
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.41.1"),
         // The enhancer seam's types (UpscaleTier, UpscaleFactor) for ×6/×8 chains and the generative tiers.
-        .package(url: "https://github.com/xocialize/ForgeOptimizerKit.git", from: "0.23.0"),
+        // ≥ 0.25.0: `UpscaleTier.instant`, which the tier map names for Anime4K's ×6/×8.
+        .package(url: "https://github.com/xocialize/ForgeOptimizerKit.git", from: "0.25.0"),
         // Generative packages, registered as ForgeCore `ExternalRegistration`s.
         // ≥ 0.5.3: its int8/int4 tiers download the published bf16 snapshot (AB-T-0221).
         // z-image ≥ 0.5.4, klein ≥ 0.8.1, qwen-image-edit ≥ 0.9.3 report RunProgress phases and

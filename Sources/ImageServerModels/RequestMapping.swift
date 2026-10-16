@@ -234,7 +234,7 @@ public enum SubmitValidation {
                 // ×6 and ×8 are chains from a tiered model (AB-D-0119); the others run ×2 and ×4 only.
                 if s > 4, EngineRunner.tier(for: route) == nil {
                     throw APIError.unprocessable("param_out_of_range",
-                                                 "\(route.id) runs ×2 and ×4; ×6 and ×8 are served from NERVE, RealPLKSR, VOSR2 or Nacre.",
+                                                 "\(route.id) runs ×2 and ×4; ×6 and ×8 are served from NERVE, RealPLKSR, VOSR2, Nacre or Anime4K VL.",
                                                  param: "scale")
                 }
             }

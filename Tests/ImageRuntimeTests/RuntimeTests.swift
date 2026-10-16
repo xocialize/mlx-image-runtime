@@ -18,6 +18,9 @@ struct RuntimeTests {
         let tiers = ModelCatalog.processing()
         #expect(Set(tiers.map(\.id)).count == tiers.count)
         #expect(tiers.allSatisfy { $0.forgeModel != nil && $0.packageID.rawValue.hasPrefix("forge.") })
+        // Anime4K VL (AB-A-0183): the weightless Instant tier, reachable by name, preferred for nothing.
+        let anime4k = tiers.first { $0.id == "anime4k-upscale" }
+        #expect(anime4k?.forgeModel == .upscaleInstant && anime4k?.preferredFor.isEmpty == true)
         for capability in Set(tiers.flatMap(\.capabilities)) {
             #expect(tiers.filter { $0.preferredFor.contains(capability) }.count <= 1, "at most one preferred \(capability.rawValue) tier")
         }
@@ -169,6 +172,9 @@ struct RuntimeTests {
         #expect(EngineRunner.tier(for: realplksr) == .best && EngineRunner.tier(for: vosr2) == .generative)
         #expect(EngineRunner.tier(for: route("nacre-upscale", package("nacre-upscale"))) == .generativeClean)
         #expect(EngineRunner.tier(for: heart) == nil, "HEART stays off the tier map")
+        let anime4k = route("anime4k-upscale", package("anime4k-upscale"))
+        #expect(EngineRunner.tier(for: anime4k) == .instant)
+        #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(6), route: anime4k) }
         #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(6), route: realplksr) }
         #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(8), route: vosr2) }
         #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(8), route: heart) }
