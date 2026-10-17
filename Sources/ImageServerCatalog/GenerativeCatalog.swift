@@ -9,6 +9,7 @@ import MLXMageFlow
 import MLXMingImage
 import MLXQwenImage21
 import MLXMageVL
+import MLXMossImage
 import MLXQwenImageEdit
 import MLXQwenImageFlash
 import MLXSenseNovaU1
@@ -62,6 +63,8 @@ extension ModelCatalog {
             senseNova(.q8, id: "sensenova-u1", name: "SenseNova-U1.5"),
             senseNova(.fast8V2, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
             senseNova(.fast8, id: "sensenova-u1-fast-v1", name: "SenseNova-U1.5 8-step (V1 adapter)"),
+            moss(.sft, snapshots, quant: mossQuant(environment)),
+            moss(.base, snapshots, quant: mossQuant(environment)),
             ming(),
         ]
         // Local-weights-only packages register only when their weights are present.
@@ -268,6 +271,59 @@ extension ModelCatalog {
             source: .package(manifest: SenseNovaU1Package.manifest, register: {
                 try await $0.register(SenseNovaU1Package.registration, configuration: configuration, id: packageID)
             }))
+    }
+
+    /// MOSS-Image's DiT tier on this Mac: bf16 from 48 GB (10.5 GB resident, 26.2 GB peak at 1024²), int8 below it
+    /// (5.8 GB resident, 21.5 GB peak; the same image at a fixed seed, 27.3 dB). The peak is the per-request Qwen3.5-9B
+    /// encode on both tiers. `MLXIMG_MOSS_QUANT` (`bf16`, `int8`) overrides it, to measure or on a shared Mac.
+    public static func mossQuant(_ environment: [String: String],
+                                 physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> Quant {
+        if let raw = environment["MLXIMG_MOSS_QUANT"]?.lowercased(), let chosen = Quant(rawValue: raw),
+           [.bf16, .int8].contains(chosen) { return chosen }
+        return physicalMemory < 48 << 30 ? .int8 : .bf16
+    }
+
+    /// MOSS-Image (moss-image-swift ≥ 0.1.0, AB-T-0307; Apache-2.0 weights, MIT port; shipping approved, AB-D-0150).
+    /// SFT is the one to pick: long English and Chinese text and JSON layout prompts that place text and objects by
+    /// bounding box. Base is the pretrained checkpoint SFT was tuned from, registered for LoRA work and comparison. Both
+    /// are prod and permissive, preferred for nothing: 50 steps with CFG is about 2 minutes per 1024² image on an M5 Max.
+    /// The weights come from the mlx-community mirrors, pinned; the text encoder, tokenizer and VAE come from the SFT
+    /// mirror for both, so a Mac with both stores the 16.8 GB encoder once. `MLXIMG_WEIGHTS_ROOT` folders
+    /// `MOSS-Image-SFT` / `MOSS-Image-Base` (upstream snapshots) are read in place.
+    static func moss(_ variant: MossImageVariant, _ snapshots: Snapshots, quant: Quant) -> CatalogEntry {
+        let id = variant == .sft ? "moss-image-sft" : "moss-image-base"
+        let packageID = PackageID("imgsrv.\(id)")
+        let snapshot = snapshots.path(for: id, folder: variant == .sft ? "MOSS-Image-SFT" : "MOSS-Image-Base")
+        let shared = snapshots.path(for: "moss-image-sft", folder: "MOSS-Image-SFT")
+        let configuration = MossImageConfiguration(variant: variant, quant: quant, snapshotPath: snapshot ?? "",
+                                                   sharedSnapshotPath: shared ?? "")
+        let envelope = SizeEnvelope(maxPixels: MossImageEnvelope.maxOutputPixels, multipleOf: 16)
+        let defaults = GenerationDefaults(steps: 50, guidance: 3.0)
+        let local = (snapshot == nil || shared == nil) ? nil : snapshot
+        switch variant {
+        case .sft:
+            return CatalogEntry(
+                id: ModelID(id), packageID: packageID, displayName: "MOSS-Image",
+                summary: "MOSS-Image-SFT 5B (OpenMOSS, Apache-2.0) — text-to-image with the strongest long-text rendering "
+                    + "in English and Chinese (line breaks kept), and JSON layout prompts that place text and objects by "
+                    + "bounding box (summary.caption + items, yxyx in pixels of the requested canvas). 50 steps, CFG 3: about "
+                    + "2 minutes per 1024² image on an M5 Max. Sides multiples of 16, 256²–1456² by area.",
+                capabilities: [.textToImage], maturity: .prod, envelope: envelope, defaults: defaults, quant: quant,
+                localSnapshot: local,
+                source: .package(manifest: MossImageSFTPackage.manifest, register: {
+                    try await $0.register(MossImageSFTPackage.registration, configuration: configuration, id: packageID)
+                }))
+        case .base:
+            return CatalogEntry(
+                id: ModelID(id), packageID: packageID, displayName: "MOSS-Image Base",
+                summary: "MOSS-Image-Base 5B (OpenMOSS, Apache-2.0) — the pretrained checkpoint MOSS-Image is tuned from: "
+                    + "same prompts and layout JSON, less curated composition; for LoRA work and comparison. 50 steps, CFG 3.",
+                capabilities: [.textToImage], maturity: .prod, envelope: envelope, defaults: defaults, quant: quant,
+                localSnapshot: local,
+                source: .package(manifest: MossImageBasePackage.manifest, register: {
+                    try await $0.register(MossImageBasePackage.registration, configuration: configuration, id: packageID)
+                }))
+        }
     }
 
     static func ming() -> CatalogEntry {

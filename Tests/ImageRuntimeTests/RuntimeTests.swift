@@ -63,6 +63,31 @@ struct RuntimeTests {
         #expect(fast.quant == .int8)
     }
 
+    @Test("MOSS-Image SFT and Base are prod and permissive T2I, preferred for nothing, 50 steps CFG 3 under the 1456² cap (AB-T-0307)")
+    func mossImage() throws {
+        let entries = ModelCatalog.all(environment: [:])
+        for id in ["moss-image-sft", "moss-image-base"] {
+            let entry = try #require(entries.first { $0.id.rawValue == id }, "\(id) is in the catalog")
+            #expect(entry.packageID.rawValue == "imgsrv.\(id)")
+            #expect(entry.maturity == .prod && entry.preferredFor.isEmpty, "\(id) is prod, not a default")
+            #expect(entry.capabilities == [.textToImage])
+            #expect(entry.defaults.steps == 50 && entry.defaults.guidance == 3.0)
+            #expect(entry.envelope.maxPixels == 1456 * 1456 && entry.envelope.multipleOf == 16)
+            let manifest = try #require(entry.manifest, "\(id) is a package entry")
+            #expect(LicenseClassifier.stamp(for: manifest.license, advisories: []).licenseClass == .permissive)
+        }
+    }
+
+    @Test("MOSS-Image runs bf16 from 48 GB and int8 below; MLXIMG_MOSS_QUANT overrides with bf16 or int8 only")
+    func mossQuant() {
+        #expect(ModelCatalog.mossQuant([:], physicalMemory: 128 << 30) == .bf16)
+        #expect(ModelCatalog.mossQuant([:], physicalMemory: 48 << 30) == .bf16)
+        #expect(ModelCatalog.mossQuant([:], physicalMemory: 36 << 30) == .int8)
+        #expect(ModelCatalog.mossQuant(["MLXIMG_MOSS_QUANT": "int8"], physicalMemory: 128 << 30) == .int8)
+        #expect(ModelCatalog.mossQuant(["MLXIMG_MOSS_QUANT": "BF16"], physicalMemory: 24 << 30) == .bf16)
+        #expect(ModelCatalog.mossQuant(["MLXIMG_MOSS_QUANT": "int4"], physicalMemory: 128 << 30) == .bf16, "int4 is not a declared tier")
+    }
+
     @Test("Mage-Flow's content filter is off unless MLXIMG_MAGE_CONTENT_FILTER turns it on (AB-D-0122); Edit Turbo runs int8")
     func mageContentFilter() {
         #expect(!ModelCatalog.mageContentFilter([:]))

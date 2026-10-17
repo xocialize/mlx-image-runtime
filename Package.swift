@@ -10,8 +10,8 @@ import PackageDescription
 //                       engine service and router, the runner over MLXServeEngine, request mapping. Links ForgeCore
 //                       and no generative package.
 //   ImageServerCatalog  the generative and analysis packages (ModelCatalog.all/generative/analysis): Z-Image, Klein,
-//                       Qwen-Image Edit and Flash, Mage-Flow, SenseNova U1, Ming, Boogu, Anima, Qwen-Image 2.1,
-//                       Mage-VL. Linking it links all of them.
+//                       Qwen-Image Edit and Flash, Mage-Flow, SenseNova U1, MOSS-Image, Ming, Boogu, Anima,
+//                       Qwen-Image 2.1, Mage-VL. Linking it links all of them.
 //
 // Used by ML[X] Image Server and by the Pixel Agency Image Engine (whose normalizer needs only ImageServerModels, so
 // an app can embed ForgeCore's tiers without the generative packages).
@@ -52,6 +52,8 @@ let package = Package(
         .package(url: "https://github.com/xocialize/qwen-image21-swift.git", from: "0.2.0"),
         // Mage-VL (Apache-2.0): imageAnalysis, for captions, alt text and tags.
         .package(url: "https://github.com/xocialize/mage-vl-swift.git", from: "0.4.0"),
+        // MOSS-Image SFT and Base (OpenMOSS, Apache-2.0, AB-D-0150): long EN/ZH text and JSON layout prompts (AB-T-0307).
+        .package(url: "https://github.com/xocialize/moss-image-swift.git", from: "0.1.0"),
     ],
     targets: [
         .target(name: "ImageServerAPI", dependencies: [
@@ -83,6 +85,7 @@ let package = Package(
             .product(name: "MLXAnima", package: "anima-mlx-swift"),
             .product(name: "MLXQwenImage21", package: "qwen-image21-swift"),
             .product(name: "MLXMageVL", package: "mage-vl-swift"),
+            .product(name: "MLXMossImage", package: "moss-image-swift"),
         ]),
         .testTarget(name: "ImageRuntimeTests", dependencies: [
             "ImageServerAPI", "ImageServerModels", "ImageServerCatalog",

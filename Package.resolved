@@ -1,5 +1,5 @@
 {
-  "originHash" : "a06ff3ca0c8ea0b54fe6ae336d9a50ee688bc1ba2a9d0698cddc7d87d3cdb61e",
+  "originHash" : "5f8e440107ad381776bb666f1b4947bceb9e909ff0a799271aed8a9210aa7b19",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-vae-mlx-swift",
       "state" : {
-        "revision" : "0de9b339279bb8f030fa64b631fc090a254396fe",
-        "version" : "0.3.0"
+        "revision" : "4fde50e68fc4fe30bae37b3ddfb811304ef0e843",
+        "version" : "0.4.0"
       }
     },
     {
@@ -449,6 +449,15 @@
       "state" : {
         "revision" : "f85595f398d64ef421966abd1a55703add07cb7e",
         "version" : "0.3.1"
+      }
+    },
+    {
+      "identity" : "moss-image-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/moss-image-swift.git",
+      "state" : {
+        "revision" : "f5985926853b4319daa24447f473fb41e8ec3476",
+        "version" : "0.1.0"
       }
     },
     {
