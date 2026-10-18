@@ -54,7 +54,7 @@ let package = Package(
         .package(url: "https://github.com/xocialize/mage-vl-swift.git", from: "0.4.0"),
         // MOSS-Image SFT and Base (OpenMOSS, Apache-2.0, AB-D-0150): long EN/ZH text and JSON layout prompts (AB-T-0307).
         // ≥ 0.2.0 for the int8 Qwen3.5-9B encoder (`textEncoderQuant`), the encoder tier below 48 GB (AB-D-0152).
-        .package(url: "https://github.com/xocialize/moss-image-swift.git", from: "0.2.0"),
+        .package(url: "https://github.com/xocialize/moss-image-swift.git", from: "0.2.1"),
         // FLUX 3 Image Klein (BFL, FLUX Kommunity License: non-commercial, plus commercial outputs for small businesses
         // only): a restricted, named-only tier (AB-D-0151, AB-T-0315). ≥ 0.3.0: the row-band VAE decode and the 2048²
         // envelope (AB-R-0579).

@@ -76,10 +76,14 @@ mirror's 16.8 GB text encoder and VAE.
 The DiT tier (`ModelCatalog.mossQuant`) and the Qwen3.5-9B encoder tier (`ModelCatalog.mossTextEncoderQuant`,
 moss-image-swift ≥ 0.2.0) follow the Mac (AB-D-0152). In-app peaks (phys_footprint):
 
-| Mac | DiT | Encoder | Resident between jobs | Peak at 1024² | Peak at 1456² |
-|---|---|---|---|---|---|
-| 48 GB or more | bf16 | bf16 | 10.4 GB | 26.5 GB (encode) | 27.3 GB (decode) |
-| below 48 GB | int8 | int8 | 5.8 GB | 15.7 GB | 22.6 GB (decode) |
+| Mac | DiT | Encoder | Resident between jobs | Peak at 1024² | Peak at 1456² | Declared (0.10.1) |
+|---|---|---|---|---|---|---|
+| 48 GB or more | bf16 | bf16 | 10.4 GB | 26.5 GB (encode) | 27.3 GB (decode) | 10.5 + 17.5 = 28.0 GB |
+| below 48 GB | int8 | int8 | 5.8 GB | 15.7 GB | 22.6 GB (decode) | 5.8 + 17.5 = 23.3 GB |
+
+0.10.1 needs moss-image-swift ≥ 0.2.1, which declares 17.5 GB activation on every lane: the 1456² decode is
+16.84 GB over resident whatever the encoder. 0.2.0 declared 16.5 GB, and 14.9 GB for the int8 encoder, so every lane
+was under-declared at the cap (AB-T-0317, AB-R-0575).
 
 Text error is within noise of bf16/bf16 on both lanes (an OCR gate over 20 EN/ZH long-text prompts, AB-R-0572).
 `MLXIMG_MOSS_QUANT` overrides the DiT tier and `MLXIMG_MOSS_TE_QUANT` the encoder tier, each `bf16` or `int8`.

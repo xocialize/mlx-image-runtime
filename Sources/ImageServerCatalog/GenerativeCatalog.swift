@@ -301,7 +301,8 @@ extension ModelCatalog {
         return physicalMemory < 48 << 30 ? .int8 : .bf16
     }
 
-    /// MOSS-Image (moss-image-swift ≥ 0.2.0, AB-T-0307; Apache-2.0 weights, MIT port; shipping approved, AB-D-0150).
+    /// MOSS-Image (moss-image-swift ≥ 0.2.1, 17.5 GB activation on every lane, AB-T-0317; AB-T-0307; Apache-2.0 weights,
+    /// MIT port; shipping approved, AB-D-0150).
     /// SFT is the one to pick: long English and Chinese text and JSON layout prompts that place text and objects by
     /// bounding box. Base is the pretrained checkpoint SFT was tuned from, registered for LoRA work and comparison. Both
     /// are prod and permissive, preferred for nothing: 50 steps with CFG is about 2 minutes per 1024² image on an M5 Max.
