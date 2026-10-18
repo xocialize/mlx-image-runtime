@@ -1,6 +1,7 @@
 import Foundation
 import ImageServerAPI
 import ImageServerCatalog
+import MossImage
 @testable import ImageServerModels
 import MLXHubMetadata
 import MLXMageFlow
@@ -78,14 +79,30 @@ struct RuntimeTests {
         }
     }
 
-    @Test("MOSS-Image runs bf16 from 48 GB and int8 below; MLXIMG_MOSS_QUANT overrides with bf16 or int8 only")
+    @Test("MOSS-Image's DiT runs bf16 from 48 GB and int8 below (AB-D-0152); MLXIMG_MOSS_QUANT overrides with bf16 or int8 only")
     func mossQuant() {
         #expect(ModelCatalog.mossQuant([:], physicalMemory: 128 << 30) == .bf16)
         #expect(ModelCatalog.mossQuant([:], physicalMemory: 48 << 30) == .bf16)
+        #expect(ModelCatalog.mossQuant([:], physicalMemory: 47 << 30) == .int8)
         #expect(ModelCatalog.mossQuant([:], physicalMemory: 36 << 30) == .int8)
+        #expect(ModelCatalog.mossQuant([:], physicalMemory: 32 << 30) == .int8)
+        #expect(ModelCatalog.mossQuant([:], physicalMemory: 24 << 30) == .int8)
         #expect(ModelCatalog.mossQuant(["MLXIMG_MOSS_QUANT": "int8"], physicalMemory: 128 << 30) == .int8)
         #expect(ModelCatalog.mossQuant(["MLXIMG_MOSS_QUANT": "BF16"], physicalMemory: 24 << 30) == .bf16)
         #expect(ModelCatalog.mossQuant(["MLXIMG_MOSS_QUANT": "int4"], physicalMemory: 128 << 30) == .bf16, "int4 is not a declared tier")
+    }
+
+    @Test("MOSS-Image's encoder runs bf16 from 48 GB and int8 below (AB-D-0152); MLXIMG_MOSS_TE_QUANT overrides it")
+    func mossTextEncoderQuant() {
+        #expect(ModelCatalog.mossTextEncoderQuant([:], physicalMemory: 128 << 30) == .bf16)
+        #expect(ModelCatalog.mossTextEncoderQuant([:], physicalMemory: 48 << 30) == .bf16)
+        #expect(ModelCatalog.mossTextEncoderQuant([:], physicalMemory: 47 << 30) == .int8)
+        #expect(ModelCatalog.mossTextEncoderQuant([:], physicalMemory: 36 << 30) == .int8)
+        #expect(ModelCatalog.mossTextEncoderQuant([:], physicalMemory: 32 << 30) == .int8)
+        #expect(ModelCatalog.mossTextEncoderQuant(["MLXIMG_MOSS_TE_QUANT": "int8"], physicalMemory: 128 << 30) == .int8)
+        #expect(ModelCatalog.mossTextEncoderQuant(["MLXIMG_MOSS_TE_QUANT": "BF16"], physicalMemory: 32 << 30) == .bf16)
+        #expect(ModelCatalog.mossTextEncoderQuant(["MLXIMG_MOSS_TE_QUANT": "int4"], physicalMemory: 32 << 30) == .int8,
+                "int4 is not an encoder tier")
     }
 
     @Test("Mage-Flow's content filter is off unless MLXIMG_MAGE_CONTENT_FILTER turns it on (AB-D-0122); Edit Turbo runs int8")

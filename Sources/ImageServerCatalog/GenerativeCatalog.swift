@@ -10,6 +10,7 @@ import MLXMingImage
 import MLXQwenImage21
 import MLXMageVL
 import MLXMossImage
+import MossImage
 import MLXQwenImageEdit
 import MLXQwenImageFlash
 import MLXSenseNovaU1
@@ -63,8 +64,8 @@ extension ModelCatalog {
             senseNova(.q8, id: "sensenova-u1", name: "SenseNova-U1.5"),
             senseNova(.fast8V2, id: "sensenova-u1-fast", name: "SenseNova-U1.5 8-step"),
             senseNova(.fast8, id: "sensenova-u1-fast-v1", name: "SenseNova-U1.5 8-step (V1 adapter)"),
-            moss(.sft, snapshots, quant: mossQuant(environment)),
-            moss(.base, snapshots, quant: mossQuant(environment)),
+            moss(.sft, snapshots, quant: mossQuant(environment), textEncoderQuant: mossTextEncoderQuant(environment)),
+            moss(.base, snapshots, quant: mossQuant(environment), textEncoderQuant: mossTextEncoderQuant(environment)),
             ming(),
         ]
         // Local-weights-only packages register only when their weights are present.
@@ -273,9 +274,12 @@ extension ModelCatalog {
             }))
     }
 
-    /// MOSS-Image's DiT tier on this Mac: bf16 from 48 GB (10.5 GB resident, 26.2 GB peak at 1024²), int8 below it
-    /// (5.8 GB resident, 21.5 GB peak; the same image at a fixed seed, 27.3 dB). The peak is the per-request Qwen3.5-9B
-    /// encode on both tiers. `MLXIMG_MOSS_QUANT` (`bf16`, `int8`) overrides it, to measure or on a shared Mac.
+    /// MOSS-Image's DiT tier on this Mac: bf16 from 48 GB (10.4 GB resident), int8 below it (5.8 GB). In-app peaks
+    /// (AB-D-0152): with `mossTextEncoderQuant` that is bf16/bf16 from 48 GB, int8/int8 below it — 15.7 GB at 1024²
+    /// and 22.6 GB at the 1456² cap, where the VAE decode is the peak on every lane (16.8 GB over resident). A bf16
+    /// DiT's 27.3 GB cap peak leaves a 36 GB Mac about 1 GB of its budget, so it starts at 48 GB. Text error is within
+    /// noise of bf16/bf16 (OCR gate, AB-R-0572). `MLXIMG_MOSS_QUANT` (`bf16`, `int8`) overrides it, to measure or on a
+    /// shared Mac.
     public static func mossQuant(_ environment: [String: String],
                                  physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> Quant {
         if let raw = environment["MLXIMG_MOSS_QUANT"]?.lowercased(), let chosen = Quant(rawValue: raw),
@@ -283,20 +287,32 @@ extension ModelCatalog {
         return physicalMemory < 48 << 30 ? .int8 : .bf16
     }
 
-    /// MOSS-Image (moss-image-swift ≥ 0.1.0, AB-T-0307; Apache-2.0 weights, MIT port; shipping approved, AB-D-0150).
+    /// MOSS-Image's Qwen3.5-9B encoder tier (moss-image-swift ≥ 0.2.0, AB-D-0152): bf16 from 48 GB (16.8 GB, loaded per
+    /// request), int8 below it (9.4 GB), which takes the per-request encode from 21.8 to 15.7 GB at 1024² on the int8
+    /// DiT. `MLXIMG_MOSS_TE_QUANT` (`bf16`, `int8`) overrides it.
+    public static func mossTextEncoderQuant(_ environment: [String: String],
+                                            physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory)
+        -> MossImageTextEncoderQuant {
+        if let raw = environment["MLXIMG_MOSS_TE_QUANT"]?.lowercased(),
+           let chosen = MossImageTextEncoderQuant(rawValue: raw) { return chosen }
+        return physicalMemory < 48 << 30 ? .int8 : .bf16
+    }
+
+    /// MOSS-Image (moss-image-swift ≥ 0.2.0, AB-T-0307; Apache-2.0 weights, MIT port; shipping approved, AB-D-0150).
     /// SFT is the one to pick: long English and Chinese text and JSON layout prompts that place text and objects by
     /// bounding box. Base is the pretrained checkpoint SFT was tuned from, registered for LoRA work and comparison. Both
     /// are prod and permissive, preferred for nothing: 50 steps with CFG is about 2 minutes per 1024² image on an M5 Max.
     /// The weights come from the mlx-community mirrors, pinned; the text encoder, tokenizer and VAE come from the SFT
     /// mirror for both, so a Mac with both stores the 16.8 GB encoder once. `MLXIMG_WEIGHTS_ROOT` folders
     /// `MOSS-Image-SFT` / `MOSS-Image-Base` (upstream snapshots) are read in place.
-    static func moss(_ variant: MossImageVariant, _ snapshots: Snapshots, quant: Quant) -> CatalogEntry {
+    static func moss(_ variant: MossImageVariant, _ snapshots: Snapshots, quant: Quant,
+                     textEncoderQuant: MossImageTextEncoderQuant) -> CatalogEntry {
         let id = variant == .sft ? "moss-image-sft" : "moss-image-base"
         let packageID = PackageID("imgsrv.\(id)")
         let snapshot = snapshots.path(for: id, folder: variant == .sft ? "MOSS-Image-SFT" : "MOSS-Image-Base")
         let shared = snapshots.path(for: "moss-image-sft", folder: "MOSS-Image-SFT")
         let configuration = MossImageConfiguration(variant: variant, quant: quant, snapshotPath: snapshot ?? "",
-                                                   sharedSnapshotPath: shared ?? "")
+                                                   sharedSnapshotPath: shared ?? "", textEncoderQuant: textEncoderQuant)
         let envelope = SizeEnvelope(maxPixels: MossImageEnvelope.maxOutputPixels, multipleOf: 16)
         let defaults = GenerationDefaults(steps: 50, guidance: 3.0)
         let local = (snapshot == nil || shared == nil) ? nil : snapshot

@@ -53,7 +53,8 @@ let package = Package(
         // Mage-VL (Apache-2.0): imageAnalysis, for captions, alt text and tags.
         .package(url: "https://github.com/xocialize/mage-vl-swift.git", from: "0.4.0"),
         // MOSS-Image SFT and Base (OpenMOSS, Apache-2.0, AB-D-0150): long EN/ZH text and JSON layout prompts (AB-T-0307).
-        .package(url: "https://github.com/xocialize/moss-image-swift.git", from: "0.1.0"),
+        // ≥ 0.2.0 for the int8 Qwen3.5-9B encoder (`textEncoderQuant`), the encoder tier below 48 GB (AB-D-0152).
+        .package(url: "https://github.com/xocialize/moss-image-swift.git", from: "0.2.0"),
     ],
     targets: [
         .target(name: "ImageServerAPI", dependencies: [
@@ -86,12 +87,14 @@ let package = Package(
             .product(name: "MLXQwenImage21", package: "qwen-image21-swift"),
             .product(name: "MLXMageVL", package: "mage-vl-swift"),
             .product(name: "MLXMossImage", package: "moss-image-swift"),
+            .product(name: "MossImage", package: "moss-image-swift"),
         ]),
         .testTarget(name: "ImageRuntimeTests", dependencies: [
             "ImageServerAPI", "ImageServerModels", "ImageServerCatalog",
             .product(name: "MLXHubMetadata", package: "mlx-engine-swift"),
             .product(name: "MLXServeCore", package: "mlx-engine-swift"),
             .product(name: "MLXMageFlow", package: "mage-flow-swift"),
+            .product(name: "MossImage", package: "moss-image-swift"),
         ]),
     ]
 )

@@ -1,5 +1,5 @@
 {
-  "originHash" : "5f8e440107ad381776bb666f1b4947bceb9e909ff0a799271aed8a9210aa7b19",
+  "originHash" : "c6c6f2ecc54c3f0ad45c3d867c36e22e958bb41e2dc1b03258f35271e9273ff2",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -456,8 +456,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/moss-image-swift.git",
       "state" : {
-        "revision" : "f5985926853b4319daa24447f473fb41e8ec3476",
-        "version" : "0.1.0"
+        "revision" : "6c26a0296ba2d2a09e061d89a9b9b758786cd186",
+        "version" : "0.2.0"
       }
     },
     {

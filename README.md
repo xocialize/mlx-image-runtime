@@ -31,7 +31,7 @@ Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, col
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 
 ```swift
-.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.7.0"),
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.8.0"),
 ```
 
 ## The catalog
@@ -67,14 +67,22 @@ filter's verdict.
 
 ### MOSS-Image
 
-`moss-image-sft` (MOSS-Image) and `moss-image-base` (0.7.0, moss-image-swift ≥ 0.1.0) are prod and permissive, preferred
+`moss-image-sft` (MOSS-Image) and `moss-image-base` (0.7.0, moss-image-swift ≥ 0.2.0) are prod and permissive, preferred
 for nothing. SFT renders long English and Chinese text and takes JSON layout prompts that place text and objects by
 bounding box; Base is the checkpoint it was tuned from. 50 steps with CFG 3, about 2 minutes per 1024² image on an M5
 Max, sides multiples of 16 from 256² to 1456² by area. Both download from the mlx-community mirrors, and share the SFT
 mirror's 16.8 GB text encoder and VAE.
 
-The DiT runs bf16 on a Mac with 48 GB or more and int8 below it (`ModelCatalog.mossQuant`); `MLXIMG_MOSS_QUANT`
-(`bf16`, `int8`) overrides it. The peak on either tier is the per-request text encode.
+The DiT tier (`ModelCatalog.mossQuant`) and the Qwen3.5-9B encoder tier (`ModelCatalog.mossTextEncoderQuant`,
+moss-image-swift ≥ 0.2.0) follow the Mac (AB-D-0152). In-app peaks (phys_footprint):
+
+| Mac | DiT | Encoder | Resident between jobs | Peak at 1024² | Peak at 1456² |
+|---|---|---|---|---|---|
+| 48 GB or more | bf16 | bf16 | 10.4 GB | 26.5 GB (encode) | 27.3 GB (decode) |
+| below 48 GB | int8 | int8 | 5.8 GB | 15.7 GB | 22.6 GB (decode) |
+
+Text error is within noise of bf16/bf16 on both lanes (an OCR gate over 20 EN/ZH long-text prompts, AB-R-0572).
+`MLXIMG_MOSS_QUANT` overrides the DiT tier and `MLXIMG_MOSS_TE_QUANT` the encoder tier, each `bf16` or `int8`.
 
 ### Mage-Flow-Edit on small Macs
 
