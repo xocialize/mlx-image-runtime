@@ -58,7 +58,7 @@ let package = Package(
         // FLUX 3 Image Klein (BFL, FLUX Kommunity License: non-commercial, plus commercial outputs for small businesses
         // only): a restricted, named-only tier (AB-D-0151, AB-T-0315). ≥ 0.3.0: the row-band VAE decode and the 2048²
         // envelope (AB-R-0579).
-        .package(url: "https://github.com/xocialize/flux3-klein-swift.git", from: "0.5.0"),
+        .package(url: "https://github.com/xocialize/flux3-klein-swift.git", from: "0.6.0"),
     ],
     targets: [
         .target(name: "ImageServerAPI", dependencies: [

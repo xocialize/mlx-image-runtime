@@ -104,6 +104,18 @@ struct RuntimeTests {
         #expect(ModelCatalog.flux3Upsampler(["MLXIMG_FLUX3_UPSAMPLER": "int2"]) == .int8, "not a tier")
     }
 
+    @Test("FLUX 3 Klein's safety checks are off by default; MLXIMG_FLUX3_SAFETY=1 / on / true turns them on")
+    func flux3Safety() {
+        #expect(!ModelCatalog.flux3Safety([:]))
+        #expect(ModelCatalog.flux3Safety(["MLXIMG_FLUX3_SAFETY": "1"]))
+        #expect(ModelCatalog.flux3Safety(["MLXIMG_FLUX3_SAFETY": "ON"]))
+        #expect(!ModelCatalog.flux3Safety(["MLXIMG_FLUX3_SAFETY": "0"]))
+        let off = ModelCatalog.generative(environment: [:]).first { $0.id == "flux-3-klein" }
+        let on = ModelCatalog.generative(environment: ["MLXIMG_FLUX3_SAFETY": "true"]).first { $0.id == "flux-3-klein" }
+        #expect(off?.summary.contains("Safety checks on") == false)
+        #expect(on?.summary.contains("Safety checks on (fail-closed)") == true)
+    }
+
     @Test("FLUX 3 Klein's DiT runs bf16 from 48 GB, int8 from 32 GB, int4 below; MLXIMG_FLUX3_QUANT overrides")
     func flux3Quant() {
         #expect(ModelCatalog.flux3Quant([:], physicalMemory: 128 << 30) == .bf16)

@@ -1,5 +1,5 @@
 {
-  "originHash" : "7bcd452dd9ead12e50d201c9e3af34e484787909c90ea6b5abb9d34e109a77d4",
+  "originHash" : "cdddb3f2be3685540c44cb256791e85f0cf4e58964f05b0bd510719f829a07ab",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux3-klein-swift.git",
       "state" : {
-        "revision" : "d3083c2221f041a8ab81ca21271e6e38a603becd",
-        "version" : "0.5.0"
+        "revision" : "c5ea9cd86818be9263895527f8c068807ee094c1",
+        "version" : "0.6.0"
       }
     },
     {

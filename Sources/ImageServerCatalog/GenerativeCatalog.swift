@@ -77,7 +77,8 @@ extension ModelCatalog {
         entries.append(qwenImage21Turbo(snapshots))
         entries.append(qwenImage21Base(snapshots))
         // FLUX 3 Image Klein: FLUX Kommunity licence → restricted, named-only (AB-D-0151).
-        entries.append(flux3Klein(snapshots, quant: flux3Quant(environment), upsampler: flux3Upsampler(environment)))
+        entries.append(flux3Klein(snapshots, quant: flux3Quant(environment), upsampler: flux3Upsampler(environment),
+                                  safety: flux3Safety(environment)))
         return entries
     }
 
@@ -384,15 +385,29 @@ extension ModelCatalog {
         environment["MLXIMG_FLUX3_UPSAMPLER"].flatMap { Flux3UpsamplerTier(rawValue: $0.lowercased()) } ?? .int8
     }
 
-    static func flux3Klein(_ snapshots: Snapshots, quant: Quant, upsampler: Flux3UpsamplerTier = .int8) -> CatalogEntry {
+    /// BFL's safety checks on FLUX 3 Klein (flux3-klein-swift ≥ 0.6.0, `flux3/safety.py`) are off unless
+    /// `MLXIMG_FLUX3_SAFETY` is `1`, `on` or `true`, as upstream ships them, and as Mage-Flow's filter (AB-D-0122) —
+    /// operator 2026-10-18: off until testing shows how intrusive they are. On, the prompt, each reference and the
+    /// output are checked for copyrighted characters, brands and public figures, and images for adult content; a
+    /// flag fails the job with the check's message. Licence-wise this is the §2(e) content-filter route; the operator
+    /// decides how outputs are used (AB-D-0151).
+    public static func flux3Safety(_ environment: [String: String]) -> Bool {
+        ["1", "on", "true"].contains(environment["MLXIMG_FLUX3_SAFETY"]?.lowercased() ?? "")
+    }
+
+    static func flux3Klein(_ snapshots: Snapshots, quant: Quant, upsampler: Flux3UpsamplerTier = .int8,
+                           safety: Bool = false) -> CatalogEntry {
         let packageID = PackageID("imgsrv.flux-3-klein")
         let snapshot = snapshots.path(for: "flux-3-klein", folder: "flux-3-image-klein")
         // Local upsampler snapshots by tier folder (the bf16 one is BFL's own download); otherwise the pinned mirror.
         let pupFolder = ["bf16": "flux-3-image-klein-pup", "int8": "flux-3-image-klein-pup-8bit",
                          "int4": "flux-3-image-klein-pup-4bit"][upsampler.rawValue]
         let pup = pupFolder.flatMap { snapshots.path(for: "flux-3-klein-pup", folder: $0) }
+        // The safety checks' NSFW classifier: `MLXIMG_WEIGHTS_ROOT/nsfw-classifier` when present, else the pinned mirror.
+        let classifier = safety ? snapshots.path(for: "flux-3-klein-nsfw", folder: "nsfw-classifier") : nil
         let configuration = Flux3KleinConfiguration(quant: quant, snapshotPath: snapshot ?? "", upsampler: upsampler,
-                                                    upsamplerPath: pup ?? "")
+                                                    upsamplerPath: pup ?? "", safetyChecks: safety,
+                                                    safetyClassifierPath: classifier ?? "")
         let envelope = SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16)
         return CatalogEntry(
             id: "flux-3-klein", packageID: packageID, displayName: "FLUX 3 Klein",
@@ -401,7 +416,9 @@ extension ModelCatalog {
                 + "outputs) — text-to-image and editing with up to 10 reference images in one 5.55B model, 16 steps. Strong "
                 + "English text, bounding-box layout in the prompt. Short requests are fine: BFL's prompt upsampler (int8) "
                 + "expands each one into the full scene caption the model needs, about 10 s per request; text to render "
-                + "goes in quotes. Output up to 2048² area, sides multiples of 16; a single reference is fitted to 2048².",
+                + "goes in quotes. Output up to 2048² area, sides multiples of 16; a single reference is fitted to 2048²."
+                + (safety ? " Safety checks on (fail-closed): prompts, references and outputs naming or showing copyrighted "
+                    + "characters, brands or public figures, or adult content, are refused." : ""),
             capabilities: [.textToImage, .imageEdit], maturity: .wip,
             envelope: envelope,
             envelopes: [.imageEdit: SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16,
