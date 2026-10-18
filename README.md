@@ -130,6 +130,19 @@ of bf16 (AB-R-0576). Footprints are from flux3-klein-swift 0.3.0, whose VAE deco
   `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein-pup-8bit` (`flux-3-image-klein-pup` for bf16).
 - **Skipping it:** a caller that wrote its own caption sends `metaData["upsample"] = false`.
 
+**Safety checks (0.13.0, flux3-klein-swift ≥ 0.6.0): off by default.**
+- **What they are:** BFL's own checks (`flux3/safety.py`). The prompt, each reference and the output are asked whether
+  they name or show a copyrighted character, a brand or a public figure; the int8 upsampler answers. Images also go
+  through an NSFW classifier (Falconsai, Apache-2.0).
+- **A flag** fails the job with the check's message.
+- **Off by default,** as BFL ships them and as Mage-Flow's filter. `MLXIMG_FLUX3_SAFETY=1` (`on`, `true`) turns them on;
+  the entry's summary then says "Safety checks on (fail-closed)". `ModelCatalog.flux3Safety`.
+- **Measured** (mlxengine-image `WIP/flux3-klein-safety-gate`):
+  - about 2 s added per job, no memory over the declaration;
+  - 0 of 45 benign prompts flagged; 23 of 24 named characters, brands and people caught;
+  - photos of real products and people are flagged as references too.
+- **Classifier weights:** read in place from `MLXIMG_WEIGHTS_ROOT/nsfw-classifier`, else the pinned mirror.
+
 ### Mage-Flow-Edit on small Macs
 
 Mage-Flow-Edit holds two big models: the Qwen3-VL conditioner (8.3 GB) and the DiT (5.6 GB at int8). How they stay in
