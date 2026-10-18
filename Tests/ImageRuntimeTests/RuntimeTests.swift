@@ -79,7 +79,7 @@ struct RuntimeTests {
         }
     }
 
-    @Test("FLUX 3 Klein is restricted (FLUX Kommunity licence, not allowlisted), wip, preferred for nothing; T2I + edit at 1152², 10 refs")
+    @Test("FLUX 3 Klein is restricted (FLUX Kommunity licence, not allowlisted), wip, preferred for nothing; T2I + edit at 2048², 10 refs")
     func flux3Klein() throws {
         let all = ModelCatalog.all(environment: [:])
         let entry = try #require(all.first { $0.id == "flux-3-klein" })
@@ -87,7 +87,8 @@ struct RuntimeTests {
         #expect(entry.preferredFor.isEmpty)
         #expect(Set(entry.capabilities) == [.textToImage, .imageEdit])
         #expect(entry.defaults.steps == 16)
-        #expect(entry.envelope.maxPixels == 1152 * 1152 && entry.envelope.multipleOf == 16)
+        #expect(entry.envelope.maxPixels == 2048 * 2048 && entry.envelope.multipleOf == 16)
+        #expect(entry.envelopes[.imageEdit]?.maxPixels == 2048 * 2048)
         #expect(entry.envelopes[.imageEdit]?.maxInputs == 10)
         let manifest = try #require(entry.manifest)
         let stamp = LicenseClassifier.stamp(for: manifest.license, advisories: [])

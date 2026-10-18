@@ -345,12 +345,16 @@ extension ModelCatalog {
         }
     }
 
-    /// FLUX 3 Image Klein's DiT tier on this Mac (flux3-klein-swift ≥ 0.2.0, AB-R-0576). Declared resident + activation:
-    /// bf16 11.7 + 15.5 GB, int8 6.7 + 15.5, int4 4.9 + 15.5 (the activation is the 1152² envelope's worst case, 10
-    /// references, mostly the fp32 VAE decode). bf16 from 48 GB (phys ~28 GB at the cap); int8 from 32 GB (the same
-    /// image as bf16 at a seed); int4, with 8-bit attention, below that (a different render, text within OCR tolerance).
-    /// A 24 GB Mac will likely still refuse it at admission until the decode shrinks. Every tier's text is within the
-    /// pre-registered OCR tolerance of bf16. `MLXIMG_FLUX3_QUANT` (`bf16`, `int8`, `int4`) overrides it.
+    /// FLUX 3 Image Klein's DiT tier on this Mac (flux3-klein-swift ≥ 0.3.0, AB-R-0579). Declared resident + activation:
+    /// bf16 11.7 + 12.0 GB, int8 6.7 + 12.0, int4 4.9 + 12.0. The activation is the 2048² envelope's worst case, a
+    /// 1664² single reference: the VAE now decodes in row bands. Tiers:
+    /// - bf16 from 48 GB (phys 24.5 GB at worst).
+    /// - int8 from 32 GB, the same image as bf16 at a seed. 18.7 GB declared would squeeze under a 24 GB Mac's
+    ///   19.07 GB budget, but phys would not.
+    /// - int4, with 8-bit attention, below that: a different render, text within OCR tolerance. 16.9 GB declared, so a
+    ///   24 GB Mac admits it (phys 17.8 GB); before 0.3.0 it declared 20.4 GB and was refused.
+    /// Every tier's text is within the pre-registered OCR tolerance of bf16. `MLXIMG_FLUX3_QUANT` (`bf16`, `int8`,
+    /// `int4`) overrides it.
     public static func flux3Quant(_ environment: [String: String],
                                   physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> Quant {
         if let raw = environment["MLXIMG_FLUX3_QUANT"]?.lowercased(), let chosen = Quant(rawValue: raw),
@@ -359,7 +363,7 @@ extension ModelCatalog {
         return physicalMemory >= 32 << 30 ? .int8 : .int4
     }
 
-    /// `flux-3-klein`: FLUX 3 Image Klein (Black Forest Labs; flux3-klein-swift ≥ 0.2.0, AB-T-0315).
+    /// `flux-3-klein`: FLUX 3 Image Klein (Black Forest Labs; flux3-klein-swift ≥ 0.3.0, AB-T-0315).
     /// - Model: text-to-image and editing with up to 10 references in one 5.55B flow-map DiT, 16 steps, no guidance.
     ///   Strong English text rendering, bounding-box layout in the prompt. It needs full scene captions, so the offer's
     ///   summary carries BFL's prompting rules for a calling agent to follow.
@@ -369,7 +373,8 @@ extension ModelCatalog {
     ///   (AB-D-0151).
     /// - Weights: the gated mlx-community mirror, pinned by commit; a first download needs an HF token that has
     ///   accepted the licence. `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein` (BFL's bf16 package) is read in place.
-    /// - Envelope: output ≤ 1152² area, sides ×16; a single reference is fitted to the same area.
+    /// - Envelope (`Flux3KleinEnvelope`): output ≤ 2048² area, sides ×16. The package fits a single reference to 1664²
+    ///   itself (its VAE encode is untiled) and refuses nothing for it.
     static func flux3Klein(_ snapshots: Snapshots, quant: Quant) -> CatalogEntry {
         let packageID = PackageID("imgsrv.flux-3-klein")
         let snapshot = snapshots.path(for: "flux-3-klein", folder: "flux-3-image-klein")
@@ -382,7 +387,7 @@ extension ModelCatalog {
                 + "outputs) — text-to-image and editing with up to 10 reference images in one 5.55B model, 16 steps. Strong "
                 + "English text, bounding-box layout in the prompt. Needs a FULL SCENE CAPTION (style, scene, lighting, "
                 + "each subject's colours, materials and position; text in quotes); a short prompt gives generic output. "
-                + "Output up to 1152² area, sides multiples of 16.",
+                + "Output up to 2048² area, sides multiples of 16; a single reference is fitted to 1664².",
             capabilities: [.textToImage, .imageEdit], maturity: .wip,
             envelope: envelope,
             envelopes: [.imageEdit: SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16,
