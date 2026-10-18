@@ -278,11 +278,11 @@ extension ModelCatalog {
     }
 
     /// MOSS-Image's DiT tier on this Mac: bf16 from 48 GB (10.4 GB resident), int8 below it (5.8 GB). In-app peaks
-    /// (AB-D-0152): with `mossTextEncoderQuant` that is bf16/bf16 from 48 GB, int8/int8 below it — 15.7 GB at 1024²
-    /// and 22.6 GB at the 1456² cap, where the VAE decode is the peak on every lane (16.8 GB over resident). A bf16
-    /// DiT's 27.3 GB cap peak leaves a 36 GB Mac about 1 GB of its budget, so it starts at 48 GB. Text error is within
-    /// noise of bf16/bf16 (OCR gate, AB-R-0572). `MLXIMG_MOSS_QUANT` (`bf16`, `int8`) overrides it, to measure or on a
-    /// shared Mac.
+    /// (AB-D-0152): with `mossTextEncoderQuant` that is bf16/bf16 from 48 GB (26.5 GB), int8/int8 below it (15.7 GB),
+    /// the per-request encode at every size up to the 1456² cap since moss-image-swift 0.3.0's row-band VAE decode.
+    /// The 48 GB line was set when the untiled decode put a bf16 DiT at 27.3 GB at the cap; bf16 DiT + int8 encoder now
+    /// peaks at 20.4 GB. Text error is within noise of bf16/bf16 (OCR gate, AB-R-0572). `MLXIMG_MOSS_QUANT` (`bf16`,
+    /// `int8`) overrides it, to measure or on a shared Mac.
     public static func mossQuant(_ environment: [String: String],
                                  physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> Quant {
         if let raw = environment["MLXIMG_MOSS_QUANT"]?.lowercased(), let chosen = Quant(rawValue: raw),
@@ -301,8 +301,8 @@ extension ModelCatalog {
         return physicalMemory < 48 << 30 ? .int8 : .bf16
     }
 
-    /// MOSS-Image (moss-image-swift ≥ 0.2.1, 17.5 GB activation on every lane, AB-T-0317; AB-T-0307; Apache-2.0 weights,
-    /// MIT port; shipping approved, AB-D-0150).
+    /// MOSS-Image (moss-image-swift ≥ 0.3.0: row-band VAE decode, 16.7 GB activation with the bf16 encoder and 10.4 GB
+    /// with the int8 one; AB-T-0307; Apache-2.0 weights, MIT port; shipping approved, AB-D-0150).
     /// SFT is the one to pick: long English and Chinese text and JSON layout prompts that place text and objects by
     /// bounding box. Base is the pretrained checkpoint SFT was tuned from, registered for LoRA work and comparison. Both
     /// are prod and permissive, preferred for nothing: 50 steps with CFG is about 2 minutes per 1024² image on an M5 Max.

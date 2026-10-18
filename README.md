@@ -76,14 +76,16 @@ mirror's 16.8 GB text encoder and VAE.
 The DiT tier (`ModelCatalog.mossQuant`) and the Qwen3.5-9B encoder tier (`ModelCatalog.mossTextEncoderQuant`,
 moss-image-swift ≥ 0.2.0) follow the Mac (AB-D-0152). In-app peaks (phys_footprint):
 
-| Mac | DiT | Encoder | Resident between jobs | Peak at 1024² | Peak at 1456² | Declared (0.10.1) |
+| Mac | DiT | Encoder | Resident between jobs | Peak at 1024² | Peak at 1456² | Declared (0.11.0) |
 |---|---|---|---|---|---|---|
-| 48 GB or more | bf16 | bf16 | 10.4 GB | 26.5 GB (encode) | 27.3 GB (decode) | 10.5 + 17.5 = 28.0 GB |
-| below 48 GB | int8 | int8 | 5.8 GB | 15.7 GB | 22.6 GB (decode) | 5.8 + 17.5 = 23.3 GB |
+| 48 GB or more | bf16 | bf16 | 10.4 GB | 26.5 GB (encode) | 26.5 GB (encode) | 10.5 + 16.7 = 27.2 GB |
+| below 48 GB | int8 | int8 | 5.8 GB | 15.7 GB (encode) | 15.7 GB (encode) | 5.8 + 10.4 = 16.2 GB |
 
-0.10.1 needs moss-image-swift ≥ 0.2.1, which declares 17.5 GB activation on every lane: the 1456² decode is
-16.84 GB over resident whatever the encoder. 0.2.0 declared 16.5 GB, and 14.9 GB for the int8 encoder, so every lane
-was under-declared at the cap (AB-T-0317, AB-R-0575).
+0.11.0 needs moss-image-swift ≥ 0.3.0, which decodes the VAE in row bands (flux2-vae-mlx-swift ≥ 0.6.0): the same
+image (124 dB vs untiled in fp32, no seams), and the 1456² decode no longer sets the peak. The per-request encode is
+the peak at every size, so the encoder tier sets the activation: 16.7 GB with the bf16 encoder, 10.4 GB with the int8
+one. That takes int8/int8 from 23.3 to 16.2 GB declared, inside a 24 GB Mac's budget. 0.10.1 (moss-image-swift
+0.2.1) declared 17.5 GB on every lane for the untiled decode (AB-T-0317, AB-R-0575).
 
 Text error is within noise of bf16/bf16 on both lanes (an OCR gate over 20 EN/ZH long-text prompts, AB-R-0572).
 `MLXIMG_MOSS_QUANT` overrides the DiT tier and `MLXIMG_MOSS_TE_QUANT` the encoder tier, each `bf16` or `int8`.
