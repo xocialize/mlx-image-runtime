@@ -79,6 +79,35 @@ struct RuntimeTests {
         }
     }
 
+    @Test("FLUX 3 Klein is restricted (FLUX Kommunity licence, not allowlisted), wip, preferred for nothing; T2I + edit at 1152², 10 refs")
+    func flux3Klein() throws {
+        let all = ModelCatalog.all(environment: [:])
+        let entry = try #require(all.first { $0.id == "flux-3-klein" })
+        #expect(entry.maturity == .wip)
+        #expect(entry.preferredFor.isEmpty)
+        #expect(Set(entry.capabilities) == [.textToImage, .imageEdit])
+        #expect(entry.defaults.steps == 16)
+        #expect(entry.envelope.maxPixels == 1152 * 1152 && entry.envelope.multipleOf == 16)
+        #expect(entry.envelopes[.imageEdit]?.maxInputs == 10)
+        let manifest = try #require(entry.manifest)
+        let stamp = LicenseClassifier.stamp(for: manifest.license, advisories: [])
+        #expect(stamp.licenseClass == .restricted)
+        #expect(stamp.weightLicenses == ["LicenseRef-FLUX-Kommunity-1.0"])
+    }
+
+    @Test("FLUX 3 Klein's DiT runs bf16 from 48 GB, int8 from 32 GB, int4 below; MLXIMG_FLUX3_QUANT overrides")
+    func flux3Quant() {
+        #expect(ModelCatalog.flux3Quant([:], physicalMemory: 128 << 30) == .bf16)
+        #expect(ModelCatalog.flux3Quant([:], physicalMemory: 48 << 30) == .bf16)
+        #expect(ModelCatalog.flux3Quant([:], physicalMemory: 36 << 30) == .int8)
+        #expect(ModelCatalog.flux3Quant([:], physicalMemory: 32 << 30) == .int8)
+        #expect(ModelCatalog.flux3Quant([:], physicalMemory: 24 << 30) == .int4)
+        #expect(ModelCatalog.flux3Quant([:], physicalMemory: 16 << 30) == .int4)
+        #expect(ModelCatalog.flux3Quant(["MLXIMG_FLUX3_QUANT": "INT4"], physicalMemory: 128 << 30) == .int4)
+        #expect(ModelCatalog.flux3Quant(["MLXIMG_FLUX3_QUANT": "bf16"], physicalMemory: 24 << 30) == .bf16)
+        #expect(ModelCatalog.flux3Quant(["MLXIMG_FLUX3_QUANT": "int3"], physicalMemory: 128 << 30) == .bf16, "not a declared tier")
+    }
+
     @Test("MOSS-Image's DiT runs bf16 from 48 GB and int8 below (AB-D-0152); MLXIMG_MOSS_QUANT overrides with bf16 or int8 only")
     func mossQuant() {
         #expect(ModelCatalog.mossQuant([:], physicalMemory: 128 << 30) == .bf16)

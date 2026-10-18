@@ -84,6 +84,35 @@ moss-image-swift ≥ 0.2.0) follow the Mac (AB-D-0152). In-app peaks (phys_footp
 Text error is within noise of bf16/bf16 on both lanes (an OCR gate over 20 EN/ZH long-text prompts, AB-R-0572).
 `MLXIMG_MOSS_QUANT` overrides the DiT tier and `MLXIMG_MOSS_TE_QUANT` the encoder tier, each `bf16` or `int8`.
 
+### FLUX 3 Klein (restricted)
+
+`flux-3-klein` (0.9.0, flux3-klein-swift ≥ 0.2.0) is FLUX 3 Image Klein from Black Forest Labs: text-to-image and
+editing with up to 10 reference images in one model, 16 steps, strong English text, bounding-box layout in the prompt.
+It needs **full scene captions**; a short prompt gives generic output.
+
+- **Licence:** the FLUX Kommunity License, so the entry stamps **restricted**, is `wip` and preferred for nothing. A
+  host offers it by name only, for example behind Pixel Agency Image Engine's `--allow-research` (AB-D-0151).
+  - Non-commercial use is allowed.
+  - Commercial use of outputs is allowed only for businesses under US$5M revenue that filter content and disclose AI
+    generation.
+  - Outputs must never train a similar model.
+- **Weights:** they download from the **gated** mlx-community mirror. The account behind the HF token must have accepted
+  the licence on Hugging Face. `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein` (BFL's bf16 package) is read in place.
+- **Envelope:** output up to 1152² area, sides multiples of 16. A single reference is fitted to the same area.
+
+The DiT tier follows the Mac (`ModelCatalog.flux3Quant`). Every tier's text is within the pre-registered OCR tolerance
+of bf16 (AB-R-0576).
+
+| Mac | DiT | Declared resident + activation | phys peak at the 1152² cap |
+|---|---|---|---|
+| 48 GB or more | bf16 | 11.7 + 15.5 GB | 26.6 GB (T2I), 28.2 GB (10 refs) |
+| 32–48 GB | int8 | 6.7 + 15.5 GB | about 23 GB |
+| below 32 GB | int4, 8-bit attention | 4.9 + 15.5 GB | 21.4 GB (10 refs) |
+
+- About 11 GB of each activation is the fp32 VAE decode, so a 24 GB Mac will likely still refuse it at admission.
+- int4 renders a different image from bf16 at the same seed.
+- `MLXIMG_FLUX3_QUANT` (`bf16`, `int8`, `int4`) overrides the tier.
+
 ### Mage-Flow-Edit on small Macs
 
 Mage-Flow-Edit holds two big models: the Qwen3-VL conditioner (8.3 GB) and the DiT (5.6 GB at int8). How they stay in

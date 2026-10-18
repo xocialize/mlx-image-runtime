@@ -55,6 +55,9 @@ let package = Package(
         // MOSS-Image SFT and Base (OpenMOSS, Apache-2.0, AB-D-0150): long EN/ZH text and JSON layout prompts (AB-T-0307).
         // ≥ 0.2.0 for the int8 Qwen3.5-9B encoder (`textEncoderQuant`), the encoder tier below 48 GB (AB-D-0152).
         .package(url: "https://github.com/xocialize/moss-image-swift.git", from: "0.2.0"),
+        // FLUX 3 Image Klein (BFL, FLUX Kommunity License: non-commercial, plus commercial outputs for small businesses
+        // only): a restricted, named-only tier (AB-D-0151, AB-T-0315). ≥ 0.2.0 for the MLXFlux3Klein package.
+        .package(url: "https://github.com/xocialize/flux3-klein-swift.git", from: "0.2.0"),
     ],
     targets: [
         .target(name: "ImageServerAPI", dependencies: [
@@ -88,6 +91,7 @@ let package = Package(
             .product(name: "MLXMageVL", package: "mage-vl-swift"),
             .product(name: "MLXMossImage", package: "moss-image-swift"),
             .product(name: "MossImage", package: "moss-image-swift"),
+            .product(name: "MLXFlux3Klein", package: "flux3-klein-swift"),
         ]),
         .testTarget(name: "ImageRuntimeTests", dependencies: [
             "ImageServerAPI", "ImageServerModels", "ImageServerCatalog",

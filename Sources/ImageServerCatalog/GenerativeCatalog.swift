@@ -9,6 +9,7 @@ import MLXMageFlow
 import MLXMingImage
 import MLXQwenImage21
 import MLXMageVL
+import MLXFlux3Klein
 import MLXMossImage
 import MossImage
 import MLXQwenImageEdit
@@ -75,6 +76,8 @@ extension ModelCatalog {
         // Qwen-Image-2.1: naming it serves the Turbo checkpoint; the 40-step original is `qwen-image-2.1-base`.
         entries.append(qwenImage21Turbo(snapshots))
         entries.append(qwenImage21Base(snapshots))
+        // FLUX 3 Image Klein: FLUX Kommunity licence → restricted, named-only (AB-D-0151).
+        entries.append(flux3Klein(snapshots, quant: flux3Quant(environment)))
         return entries
     }
 
@@ -340,6 +343,55 @@ extension ModelCatalog {
                     try await $0.register(MossImageBasePackage.registration, configuration: configuration, id: packageID)
                 }))
         }
+    }
+
+    /// FLUX 3 Image Klein's DiT tier on this Mac (flux3-klein-swift ≥ 0.2.0, AB-R-0576). Declared resident + activation:
+    /// bf16 11.7 + 15.5 GB, int8 6.7 + 15.5, int4 4.9 + 15.5 (the activation is the 1152² envelope's worst case, 10
+    /// references, mostly the fp32 VAE decode). bf16 from 48 GB (phys ~28 GB at the cap); int8 from 32 GB (the same
+    /// image as bf16 at a seed); int4, with 8-bit attention, below that (a different render, text within OCR tolerance).
+    /// A 24 GB Mac will likely still refuse it at admission until the decode shrinks. Every tier's text is within the
+    /// pre-registered OCR tolerance of bf16. `MLXIMG_FLUX3_QUANT` (`bf16`, `int8`, `int4`) overrides it.
+    public static func flux3Quant(_ environment: [String: String],
+                                  physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory) -> Quant {
+        if let raw = environment["MLXIMG_FLUX3_QUANT"]?.lowercased(), let chosen = Quant(rawValue: raw),
+           [.bf16, .int8, .int4].contains(chosen) { return chosen }
+        if physicalMemory >= 48 << 30 { return .bf16 }
+        return physicalMemory >= 32 << 30 ? .int8 : .int4
+    }
+
+    /// `flux-3-klein`: FLUX 3 Image Klein (Black Forest Labs; flux3-klein-swift ≥ 0.2.0, AB-T-0315).
+    /// - Model: text-to-image and editing with up to 10 references in one 5.55B flow-map DiT, 16 steps, no guidance.
+    ///   Strong English text rendering, bounding-box layout in the prompt. It needs full scene captions, so the offer's
+    ///   summary carries BFL's prompting rules for a calling agent to follow.
+    /// - Licence: FLUX Kommunity License. Non-commercial; commercial OUTPUTS only for businesses under US$5M revenue that
+    ///   filter content and disclose AI generation; outputs never train a similar model. The LicenseRef is not
+    ///   allowlisted, so the entry stamps restricted and the engine offers it by name only, behind --allow-research
+    ///   (AB-D-0151).
+    /// - Weights: the gated mlx-community mirror, pinned by commit; a first download needs an HF token that has
+    ///   accepted the licence. `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein` (BFL's bf16 package) is read in place.
+    /// - Envelope: output ≤ 1152² area, sides ×16; a single reference is fitted to the same area.
+    static func flux3Klein(_ snapshots: Snapshots, quant: Quant) -> CatalogEntry {
+        let packageID = PackageID("imgsrv.flux-3-klein")
+        let snapshot = snapshots.path(for: "flux-3-klein", folder: "flux-3-image-klein")
+        let configuration = Flux3KleinConfiguration(quant: quant, snapshotPath: snapshot ?? "")
+        let envelope = SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16)
+        return CatalogEntry(
+            id: "flux-3-klein", packageID: packageID, displayName: "FLUX 3 Klein",
+            summary: "FLUX 3 Image Klein (Black Forest Labs, FLUX Kommunity licence: non-commercial, or commercial outputs "
+                + "only for businesses under US$5M revenue that filter content and disclose AI generation; never train on "
+                + "outputs) — text-to-image and editing with up to 10 reference images in one 5.55B model, 16 steps. Strong "
+                + "English text, bounding-box layout in the prompt. Needs a FULL SCENE CAPTION (style, scene, lighting, "
+                + "each subject's colours, materials and position; text in quotes); a short prompt gives generic output. "
+                + "Output up to 1152² area, sides multiples of 16.",
+            capabilities: [.textToImage, .imageEdit], maturity: .wip,
+            envelope: envelope,
+            envelopes: [.imageEdit: SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16,
+                                                 maxInputs: Flux3KleinEnvelope.maxReferenceImages)],
+            defaults: GenerationDefaults(steps: 16, guidance: 1.0), quant: quant,
+            localSnapshot: snapshot,
+            source: .package(manifest: Flux3KleinPackage.manifest, register: {
+                try await $0.register(Flux3KleinPackage.registration, configuration: configuration, id: packageID)
+            }))
     }
 
     static func ming() -> CatalogEntry {

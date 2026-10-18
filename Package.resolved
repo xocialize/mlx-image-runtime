@@ -1,5 +1,5 @@
 {
-  "originHash" : "c6c6f2ecc54c3f0ad45c3d867c36e22e958bb41e2dc1b03258f35271e9273ff2",
+  "originHash" : "6d7dc5954f07e3bb40b9681432c2cb561ec7a1757717169be585cf361a7e0d63",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -87,8 +87,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-vae-mlx-swift",
       "state" : {
-        "revision" : "4fde50e68fc4fe30bae37b3ddfb811304ef0e843",
-        "version" : "0.4.0"
+        "revision" : "d694522668738acc2f281e2398be1e5990867522",
+        "version" : "0.6.0"
+      }
+    },
+    {
+      "identity" : "flux3-klein-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/flux3-klein-swift.git",
+      "state" : {
+        "revision" : "95c50c2019413fa30b99b64dc58ba38eb092aaab",
+        "version" : "0.2.0"
       }
     },
     {
@@ -492,8 +501,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen3vl-mlx-swift",
       "state" : {
-        "revision" : "38e9028a38d2bacc9f9cf14569b5ff3f617fa791",
-        "version" : "0.4.0"
+        "revision" : "8e28a8656cb17c0edeb2cc88038dc00403051b6b",
+        "version" : "0.6.0"
       }
     },
     {
