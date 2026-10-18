@@ -96,6 +96,14 @@ struct RuntimeTests {
         #expect(stamp.weightLicenses == ["LicenseRef-FLUX-Kommunity-1.0"])
     }
 
+    @Test("FLUX 3 Klein's prompt upsampler is int8 by default; MLXIMG_FLUX3_UPSAMPLER overrides it (off / bf16 / int8 / int4)")
+    func flux3Upsampler() {
+        #expect(ModelCatalog.flux3Upsampler([:]) == .int8)
+        #expect(ModelCatalog.flux3Upsampler(["MLXIMG_FLUX3_UPSAMPLER": "OFF"]) == .off)
+        #expect(ModelCatalog.flux3Upsampler(["MLXIMG_FLUX3_UPSAMPLER": "int4"]) == .int4)
+        #expect(ModelCatalog.flux3Upsampler(["MLXIMG_FLUX3_UPSAMPLER": "int2"]) == .int8, "not a tier")
+    }
+
     @Test("FLUX 3 Klein's DiT runs bf16 from 48 GB, int8 from 32 GB, int4 below; MLXIMG_FLUX3_QUANT overrides")
     func flux3Quant() {
         #expect(ModelCatalog.flux3Quant([:], physicalMemory: 128 << 30) == .bf16)

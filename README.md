@@ -120,6 +120,16 @@ of bf16 (AB-R-0576). Footprints are from flux3-klein-swift 0.3.0, whose VAE deco
 - int4 renders a different image from bf16 at the same seed.
 - `MLXIMG_FLUX3_QUANT` (`bf16`, `int8`, `int4`) overrides the tier.
 
+
+**Prompt upsampler (0.12.0, flux3-klein-swift ≥ 0.5.0).**
+- **What it does:** each request first goes through BFL's Apache-2.0 prompt upsampler, which expands a short request
+  into the full scene caption the model needs. It adds about 10 s per request.
+- **Tier:** int8 on every Mac. Its 11.1 GB transient stays under the declared activation, so the ladder above is
+  unchanged. `ModelCatalog.flux3Upsampler`; `MLXIMG_FLUX3_UPSAMPLER` (`off`, `bf16`, `int8`, `int4`) overrides it.
+- **Weights:** from the mlx-community mirror (`flux-3-image-klein-pup-8bit`, public), or read in place from
+  `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein-pup-8bit` (`flux-3-image-klein-pup` for bf16).
+- **Skipping it:** a caller that wrote its own caption sends `metaData["upsample"] = false`.
+
 ### Mage-Flow-Edit on small Macs
 
 Mage-Flow-Edit holds two big models: the Qwen3-VL conditioner (8.3 GB) and the DiT (5.6 GB at int8). How they stay in

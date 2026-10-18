@@ -77,7 +77,7 @@ extension ModelCatalog {
         entries.append(qwenImage21Turbo(snapshots))
         entries.append(qwenImage21Base(snapshots))
         // FLUX 3 Image Klein: FLUX Kommunity licence → restricted, named-only (AB-D-0151).
-        entries.append(flux3Klein(snapshots, quant: flux3Quant(environment)))
+        entries.append(flux3Klein(snapshots, quant: flux3Quant(environment), upsampler: flux3Upsampler(environment)))
         return entries
     }
 
@@ -376,19 +376,32 @@ extension ModelCatalog {
     ///   accepted the licence. `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein` (BFL's bf16 package) is read in place.
     /// - Envelope (`Flux3KleinEnvelope`): output ≤ 2048² area, sides ×16. The package fits a single reference to 1664²
     ///   itself (its VAE encode is untiled) and refuses nothing for it.
-    static func flux3Klein(_ snapshots: Snapshots, quant: Quant) -> CatalogEntry {
+    /// FLUX 3 Klein's prompt upsampler tier (flux3-klein-swift ≥ 0.5.0, BFL's Apache-2.0 flux-3-image-klein-pup). It is
+    /// int8 on every Mac: its 11.1 GB per-request transient stays under the package's declared activation, while bf16
+    /// (20.2 GB) would raise the declaration. Every tier keeps quoted text and box tables (P4).
+    /// `MLXIMG_FLUX3_UPSAMPLER` (`off`, `bf16`, `int8`, `int4`) overrides it; `off` sends prompts as typed.
+    public static func flux3Upsampler(_ environment: [String: String]) -> Flux3UpsamplerTier {
+        environment["MLXIMG_FLUX3_UPSAMPLER"].flatMap { Flux3UpsamplerTier(rawValue: $0.lowercased()) } ?? .int8
+    }
+
+    static func flux3Klein(_ snapshots: Snapshots, quant: Quant, upsampler: Flux3UpsamplerTier = .int8) -> CatalogEntry {
         let packageID = PackageID("imgsrv.flux-3-klein")
         let snapshot = snapshots.path(for: "flux-3-klein", folder: "flux-3-image-klein")
-        let configuration = Flux3KleinConfiguration(quant: quant, snapshotPath: snapshot ?? "")
+        // Local upsampler snapshots by tier folder (the bf16 one is BFL's own download); otherwise the pinned mirror.
+        let pupFolder = ["bf16": "flux-3-image-klein-pup", "int8": "flux-3-image-klein-pup-8bit",
+                         "int4": "flux-3-image-klein-pup-4bit"][upsampler.rawValue]
+        let pup = pupFolder.flatMap { snapshots.path(for: "flux-3-klein-pup", folder: $0) }
+        let configuration = Flux3KleinConfiguration(quant: quant, snapshotPath: snapshot ?? "", upsampler: upsampler,
+                                                    upsamplerPath: pup ?? "")
         let envelope = SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16)
         return CatalogEntry(
             id: "flux-3-klein", packageID: packageID, displayName: "FLUX 3 Klein",
             summary: "FLUX 3 Image Klein (Black Forest Labs, FLUX Kommunity licence: non-commercial, or commercial outputs "
                 + "only for businesses under US$5M revenue that filter content and disclose AI generation; never train on "
                 + "outputs) — text-to-image and editing with up to 10 reference images in one 5.55B model, 16 steps. Strong "
-                + "English text, bounding-box layout in the prompt. Needs a FULL SCENE CAPTION (style, scene, lighting, "
-                + "each subject's colours, materials and position; text in quotes); a short prompt gives generic output. "
-                + "Output up to 2048² area, sides multiples of 16; a single reference is fitted to 1664².",
+                + "English text, bounding-box layout in the prompt. Short requests are fine: BFL's prompt upsampler (int8) "
+                + "expands each one into the full scene caption the model needs, about 10 s per request; text to render "
+                + "goes in quotes. Output up to 2048² area, sides multiples of 16; a single reference is fitted to 2048².",
             capabilities: [.textToImage, .imageEdit], maturity: .wip,
             envelope: envelope,
             envelopes: [.imageEdit: SizeEnvelope(maxPixels: Flux3KleinEnvelope.maxOutputPixels, multipleOf: 16,
