@@ -58,6 +58,10 @@ public enum RequestMapping {
             }
             return image
         }
+        // Checked again here: a host that builds RunWork itself never went through submit.
+        if let problem = SubmitValidation.metaDataProblem(spec, route: work.route) {
+            throw JobError(code: problem.code, message: problem.message)
+        }
         switch work.route.capability {
         case .textToImage:
             let background = spec.effectiveParam("background")?.stringValue.flatMap(T2IBackground.init(rawValue:))
@@ -67,9 +71,10 @@ public enum RequestMapping {
                 width: work.width, height: work.height,
                 steps: spec.effectiveParam("steps")?.intValue ?? work.route.defaults.steps,
                 guidanceScale: guidance(spec) ?? work.route.defaults.guidance,
-                seed: work.seed, background: background, mode: mode)
+                seed: work.seed, background: background, mode: mode, metaData: metaData(spec))
         case .imageEdit:
-            var meta: MetaData = [:]
+            // The caller's keys first, so the ones this mapping owns win.
+            var meta = metaData(spec)
             if let strength = spec.effectiveParam("strength")?.doubleValue { meta["strength"] = .double(strength) }
             // Mage-Flow's partial start (mage-flow-swift ≥ 0.10.0; the creative upscale's creativity, AB-D-0126). Its
             // own key, not `strength`: MES edits default strength to 0.75, which would turn every Mage edit partial.
@@ -105,7 +110,7 @@ public enum RequestMapping {
         case .imageAnalysis:
             return ImageAnalysisRequest(image: try one("image"),
                                         prompt: spec.effectiveParam("prompt")?.stringValue ?? RequestMapping.defaultAnalysisQuestion,
-                                        mode: mode)
+                                        mode: mode, metaData: metaData(spec))
         case .defectDetect:
             let kind: Matte.Kind = spec.effectiveParam("kind")?.stringValue == "softAlpha" ? .softAlpha : .binary
             return DefectDetectRequest(image: try one("image"), preferredKind: kind,
@@ -137,6 +142,23 @@ public enum RequestMapping {
     public static func guidance(_ spec: JobSpec) -> Double? {
         spec.effectiveParam("guidance")?.doubleValue ?? spec.effectiveParam("guidanceScale")?.doubleValue
     }
+
+    /// The job's package keys (`JobSpec.metaData`) as the engine's `metaData`. A null value means unset and is dropped.
+    public static func metaData(_ spec: JobSpec) -> MetaData {
+        (spec.metaData ?? [:]).filter { $0.value != .null }.mapValues(metaValue)
+    }
+
+    /// JSON → engine value. Whole numbers become `.int`, as a typed client would send them.
+    public static func metaValue(_ value: JSONValue) -> MetaValue {
+        switch value {
+        case .null: .null
+        case .bool(let b): .bool(b)
+        case .number(let n): Int(exactly: n).map(MetaValue.int) ?? .double(n)
+        case .string(let s): .string(s)
+        case .array(let a): .array(a.map(metaValue))
+        case .object(let o): .object(o.mapValues(metaValue))
+        }
+    }
 }
 
 /// Submit-time validation: everything a caller can fix is rejected here with a 4xx, never discovered mid-run.
@@ -165,6 +187,7 @@ public enum SubmitValidation {
                                          generative ? "n must be between 1 and \(maxCount)." : "\(capability.rawValue) produces one output (n = 1).",
                                          param: "n")
         }
+        if let problem = metaDataProblem(spec, route: route) { throw problem }
         let seed: UInt64
         if let raw = spec.effectiveParam("seed") {
             guard let value = raw.doubleValue, value >= 0, value.rounded() == value, value <= Double(maxSeed) else {
@@ -275,6 +298,25 @@ public enum SubmitValidation {
             break
         }
         return Resolved(width: nil, height: nil, seed: seed)
+    }
+
+    /// Package keys (`JobSpec.metaData`): each must be one the routed model declares for this capability, with its
+    /// JSON type (AB-A-0191). Anything else is refused rather than dropped, so a key never silently does nothing.
+    public static func metaDataProblem(_ spec: JobSpec, route: RoutedModel) -> APIError? {
+        for (name, value) in (spec.metaData ?? [:]).sorted(by: { $0.key < $1.key }) where value != .null {
+            guard let key = route.requestKeys.first(where: { $0.name == name }) else {
+                let offered = route.requestKeys.map(\.name)
+                let takes = offered.isEmpty ? "takes no package keys" : "takes only " + offered.joined(separator: ", ")
+                return .unprocessable("unsupported_parameter",
+                                      "meta_data.\(name) is not a key \(route.id) takes for \(route.capability.rawValue); it \(takes).",
+                                      param: "meta_data.\(name)")
+            }
+            guard key.accepts(value) else {
+                return .unprocessable("param_out_of_range", "meta_data.\(name) must be a \(key.kind.rawValue).",
+                                      param: "meta_data.\(name)")
+            }
+        }
+        return nil
     }
 
     /// Requested size → served size: floored to the envelope's multiple and checked against its pixel ceiling.

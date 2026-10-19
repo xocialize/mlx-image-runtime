@@ -52,6 +52,29 @@ Licence classes come from each package's own declaration, classified against the
 `restricted` (for example Qwen-Image 2.1's Qwen Research licence). A derived asset inherits the most restrictive class
 of its model and inputs.
 
+## Package keys per request (0.14.0)
+
+Some packages take extra per-request keys in their engine `metaData`. A caller sets them in `JobSpec.metaData` (wire
+key `meta_data`), and `RequestMapping` passes them to the routed model's request (AB-A-0191):
+
+| Model | Key | Type | Capabilities | What it does |
+|---|---|---|---|---|
+| `flux-3-klein` | `upsample` | bool | textToImage, imageEdit | `false` sends the prompt as typed, skipping BFL's upsampler. Absent: the configured upsampler runs. `true` can't add one when `MLXIMG_FLUX3_UPSAMPLER=off`. |
+| `flux-3-klein` | `boxes` | array | textToImage, imageEdit | Layout boxes or box edits (`Flux3KleinMetaKeys.boxes`). |
+| `sensenova-u1` | `think` | bool | textToImage, imageAnalysis | The reasoning pass before a render, or a `<think>` block before an analysis answer. |
+| `sensenova-u1-fast`, `-fast-v1` | `think` | bool | imageAnalysis | The distilled tiers can't think before a render. |
+
+- **Declared, not free-form.** Each `CatalogEntry` declares its keys (`requestKeys`), and they're listed in
+  `ModelInfo.requestKeys` and `RoutedModel.requestKeys`.
+- **Refused, never dropped.** `SubmitValidation` refuses an undeclared key with 422 `unsupported_parameter`, and a wrong
+  JSON type with `param_out_of_range` (`param: meta_data.<key>`). `RequestMapping` runs the same check, for a host that
+  builds `RunWork` itself.
+- **null** means unset.
+- **Canonical parameters win.** Keys the mapping sets itself (an edit's `strength` and `initSigma`) override the
+  caller's.
+- **Adapters aren't request keys.** Qwen-Image Flash's free-form `loras` stays unreachable until the engine's typed
+  adapter contract lands (AB-D-0155).
+
 ## Weights
 
 Most packages download their weights through the engine's model store. A few read local snapshots: Boogu and Anima
@@ -128,7 +151,8 @@ of bf16 (AB-R-0576). Footprints are from flux3-klein-swift 0.3.0, whose VAE deco
   unchanged. `ModelCatalog.flux3Upsampler`; `MLXIMG_FLUX3_UPSAMPLER` (`off`, `bf16`, `int8`, `int4`) overrides it.
 - **Weights:** from the mlx-community mirror (`flux-3-image-klein-pup-8bit`, public), or read in place from
   `MLXIMG_WEIGHTS_ROOT/flux-3-image-klein-pup-8bit` (`flux-3-image-klein-pup` for bf16).
-- **Skipping it:** a caller that wrote its own caption sends `metaData["upsample"] = false`.
+- **Skipping it:** a caller that wrote its own caption sends `meta_data: {"upsample": false}` (0.14.0; see "Package
+  keys per request").
 
 **Safety checks (0.13.0, flux3-klein-swift ≥ 0.6.0): off by default.**
 - **What they are:** BFL's own checks (`flux3/safety.py`). The prompt, each reference and the output are asked whether

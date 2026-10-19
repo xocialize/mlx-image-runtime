@@ -125,7 +125,8 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
             sourceRepo: manifest?.provenance.sourceRepo ?? "", revision: manifest?.provenance.revision ?? "",
             envelope: entry.envelope, defaults: entry.defaults, footprintBytes: footprint(entry),
             state: ModelState(downloaded: downloaded, resident: resident, residentBytes: residentBytes,
-                              problem: failures[entry.id].map { "not registered: \($0)" }))
+                              problem: failures[entry.id].map { "not registered: \($0)" }),
+            requestKeys: entry.requestKeys)
     }
 
     private func footprint(_ entry: CatalogEntry) -> UInt64? {
@@ -220,6 +221,7 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
                            displayName: entry.displayName, license: stamp(for: entry),
                            envelope: entry.envelope(for: capability), defaults: entry.defaults,
                            sourceRepo: manifest?.provenance.sourceRepo ?? "", revision: manifest?.provenance.revision ?? "",
-                           footprintBytes: footprint(entry))
+                           footprintBytes: footprint(entry),
+                           requestKeys: entry.requestKeys.filter { $0.capabilities.contains(capability) })
     }
 }

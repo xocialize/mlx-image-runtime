@@ -77,6 +77,36 @@ public struct GenerationDefaults: Sendable, Codable, Equatable {
     }
 }
 
+/// A package `metaData` key a caller may set per request, through `JobSpec.metaData` (AB-A-0191). Each catalog entry
+/// declares its own; submit refuses any other key, so nothing reaches a package unchecked. Adapters are not request
+/// keys: they wait for the engine's typed adapter contract (AB-D-0155).
+public struct RequestKey: Sendable, Codable, Equatable {
+    public enum Kind: String, Sendable, Codable {
+        case bool, number, string, array, object
+    }
+
+    public var name: String
+    public var kind: Kind
+    /// The capabilities that take the key.
+    public var capabilities: [Capability]
+    public var summary: String
+
+    public init(_ name: String, _ kind: Kind, capabilities: [Capability], summary: String) {
+        self.name = name
+        self.kind = kind
+        self.capabilities = capabilities
+        self.summary = summary
+    }
+
+    /// Whether `value` has this key's JSON type.
+    public func accepts(_ value: JSONValue) -> Bool {
+        switch (kind, value) {
+        case (.bool, .bool), (.number, .number), (.string, .string), (.array, .array), (.object, .object): true
+        default: false
+        }
+    }
+}
+
 public struct ModelState: Sendable, Codable, Equatable {
     public var downloaded: Bool
     public var resident: Bool
@@ -115,10 +145,13 @@ public struct ModelInfo: Sendable, Codable, Equatable, Identifiable {
     /// Declared resident bytes at the configured quant.
     public var footprintBytes: UInt64?
     public var state: ModelState
+    /// The package keys a request may set in `metaData` (AB-A-0191).
+    public var requestKeys: [RequestKey]
 
     public init(id: ModelID, displayName: String, summary: String, capabilities: [Capability], defaultFor: [Capability],
                 maturity: Maturity, license: LicenseStamp, sourceRepo: String, revision: String,
-                envelope: SizeEnvelope, defaults: GenerationDefaults, footprintBytes: UInt64?, state: ModelState) {
+                envelope: SizeEnvelope, defaults: GenerationDefaults, footprintBytes: UInt64?, state: ModelState,
+                requestKeys: [RequestKey] = []) {
         self.id = id
         self.displayName = displayName
         self.summary = summary
@@ -132,6 +165,7 @@ public struct ModelInfo: Sendable, Codable, Equatable, Identifiable {
         self.defaults = defaults
         self.footprintBytes = footprintBytes
         self.state = state
+        self.requestKeys = requestKeys
     }
 
     enum CodingKeys: String, CodingKey {
@@ -144,6 +178,26 @@ public struct ModelInfo: Sendable, Codable, Equatable, Identifiable {
         case revision, envelope, defaults
         case footprintBytes = "footprint_bytes"
         case state
+        case requestKeys = "request_keys"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(ModelID.self, forKey: .id)
+        displayName = try c.decode(String.self, forKey: .displayName)
+        summary = try c.decode(String.self, forKey: .summary)
+        capabilities = try c.decode([Capability].self, forKey: .capabilities)
+        defaultFor = try c.decode([Capability].self, forKey: .defaultFor)
+        maturity = try c.decode(Maturity.self, forKey: .maturity)
+        license = try c.decode(LicenseStamp.self, forKey: .license)
+        sourceRepo = try c.decode(String.self, forKey: .sourceRepo)
+        revision = try c.decode(String.self, forKey: .revision)
+        envelope = try c.decode(SizeEnvelope.self, forKey: .envelope)
+        defaults = try c.decode(GenerationDefaults.self, forKey: .defaults)
+        footprintBytes = try c.decodeIfPresent(UInt64.self, forKey: .footprintBytes)
+        state = try c.decode(ModelState.self, forKey: .state)
+        // Older servers (before 0.14.0) send none.
+        requestKeys = try c.decodeIfPresent([RequestKey].self, forKey: .requestKeys) ?? []
     }
 
     /// Default routing eligibility: permissive weights AND code, and validated.

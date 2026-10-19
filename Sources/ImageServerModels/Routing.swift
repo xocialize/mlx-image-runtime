@@ -15,10 +15,12 @@ public struct RoutedModel: Sendable, Equatable {
     public var revision: String
     /// Declared resident bytes — drives the keep-warm window (large models unload sooner).
     public var footprintBytes: UInt64?
+    /// The package `metaData` keys this capability takes on this model (AB-A-0191).
+    public var requestKeys: [RequestKey]
 
     public init(id: ModelID, packageID: String, capability: Capability, displayName: String, license: LicenseStamp,
                 envelope: SizeEnvelope, defaults: GenerationDefaults, sourceRepo: String, revision: String,
-                footprintBytes: UInt64? = nil) {
+                footprintBytes: UInt64? = nil, requestKeys: [RequestKey] = []) {
         self.id = id
         self.packageID = packageID
         self.capability = capability
@@ -29,6 +31,7 @@ public struct RoutedModel: Sendable, Equatable {
         self.sourceRepo = sourceRepo
         self.revision = revision
         self.footprintBytes = footprintBytes
+        self.requestKeys = requestKeys
     }
 }
 

@@ -34,12 +34,14 @@ public struct CatalogEntry: Sendable {
     public let quant: Quant?
     /// A local snapshot the entry loads from (no download involved). The engine's download check cannot see these.
     public let localSnapshot: String?
+    /// The package `metaData` keys a request may set (`JobSpec.metaData`, AB-A-0191). Submit refuses any other.
+    public let requestKeys: [RequestKey]
     public let source: Source
 
     public init(id: ModelID, packageID: PackageID? = nil, displayName: String, summary: String,
                 capabilities: [Capability], preferredFor: Set<Capability> = [], maturity: Maturity,
                 envelope: SizeEnvelope, envelopes: [Capability: SizeEnvelope] = [:], defaults: GenerationDefaults,
-                quant: Quant? = nil, localSnapshot: String? = nil, source: Source) {
+                quant: Quant? = nil, localSnapshot: String? = nil, requestKeys: [RequestKey] = [], source: Source) {
         self.id = id
         self.displayName = displayName
         self.summary = summary
@@ -51,6 +53,7 @@ public struct CatalogEntry: Sendable {
         self.defaults = defaults
         self.quant = quant
         self.localSnapshot = localSnapshot
+        self.requestKeys = requestKeys
         self.source = source
         switch source {
         case .package: self.packageID = packageID ?? PackageID("imgsrv.\(id.rawValue)")

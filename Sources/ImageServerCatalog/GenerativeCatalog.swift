@@ -273,9 +273,18 @@ extension ModelCatalog {
             envelope: SizeEnvelope(maxPixels: 2048 * 2048, multipleOf: 32, maxInputs: 1),
             defaults: GenerationDefaults(steps: distilled ? 8 : 50, guidance: distilled ? 1.0 : 4.0),
             quant: variant == .bf16 ? .bf16 : (variant == .fast4 ? .int4 : .int8),
+            requestKeys: senseNovaRequestKeys(distilled: distilled),
             source: .package(manifest: SenseNovaU1Package.manifest, register: {
                 try await $0.register(SenseNovaU1Package.registration, configuration: configuration, id: packageID)
             }))
+    }
+
+    /// SenseNova's `think` (AB-A-0191): the reasoning pass before a text-to-image render, on the base tiers only (the
+    /// package refuses it on a distilled one), and the answer's reasoning block for imageAnalysis on every tier.
+    public static func senseNovaRequestKeys(distilled: Bool) -> [RequestKey] {
+        [RequestKey("think", .bool, capabilities: distilled ? [.imageAnalysis] : [.textToImage, .imageAnalysis],
+                    summary: "true reasons before answering: a planning pass before a text-to-image render (base tiers), "
+                        + "or a <think> block ahead of an analysis answer.")]
     }
 
     /// MOSS-Image's DiT tier on this Mac: bf16 from 48 GB (10.4 GB resident), int8 below it (5.8 GB). In-app peaks
@@ -395,6 +404,17 @@ extension ModelCatalog {
         ["1", "on", "true"].contains(environment["MLXIMG_FLUX3_SAFETY"]?.lowercased() ?? "")
     }
 
+    /// FLUX 3 Klein's per-request keys (`Flux3KleinMetaKeys`, AB-A-0191). `upsample` overrides the configured upsampler
+    /// for one request; `true` does nothing when `MLXIMG_FLUX3_UPSAMPLER` is `off`, since no upsampler is loaded.
+    public static let flux3RequestKeys = [
+        RequestKey(Flux3KleinMetaKeys.upsample, .bool, capabilities: [.textToImage, .imageEdit],
+                   summary: "false sends the prompt as typed, skipping BFL's prompt upsampler (for a caller that wrote "
+                       + "the full scene caption); absent, the configured upsampler runs."),
+        RequestKey(Flux3KleinMetaKeys.boxes, .array, capabilities: [.textToImage, .imageEdit],
+                   summary: "Layout boxes on 0–1 coordinates, {id, bbox: [y_min, x_min, y_max, x_max], desc}, or box "
+                       + "edits {id, from: ref_image_n | target, src_bbox, tgt_bbox (null removes), desc}."),
+    ]
+
     static func flux3Klein(_ snapshots: Snapshots, quant: Quant, upsampler: Flux3UpsamplerTier = .int8,
                            safety: Bool = false) -> CatalogEntry {
         let packageID = PackageID("imgsrv.flux-3-klein")
@@ -425,6 +445,7 @@ extension ModelCatalog {
                                                  maxInputs: Flux3KleinEnvelope.maxReferenceImages)],
             defaults: GenerationDefaults(steps: 16, guidance: 1.0), quant: quant,
             localSnapshot: snapshot,
+            requestKeys: flux3RequestKeys,
             source: .package(manifest: Flux3KleinPackage.manifest, register: {
                 try await $0.register(Flux3KleinPackage.registration, configuration: configuration, id: packageID)
             }))

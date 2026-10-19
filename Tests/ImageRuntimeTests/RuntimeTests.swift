@@ -219,6 +219,104 @@ struct RuntimeTests {
         #expect(MageFlowEditPackage.manifest.surfaces.first?.supportedModes.contains(MageFlowModes.tiles) == true)
     }
 
+    @Test("Package keys reach the request's metaData (AB-A-0191): FLUX 3 Klein's upsample and boxes on generate and edit")
+    func metaDataPassThrough() throws {
+        func route(_ capability: Capability) -> RoutedModel {
+            RoutedModel(id: ModelID("flux-3-klein"), packageID: "imgsrv.flux-3-klein", capability: capability,
+                        displayName: "FLUX 3 Klein",
+                        license: LicenseStamp(licenseClass: .restricted, weightLicenses: ["LicenseRef-FLUX-Kommunity-1.0"],
+                                              portCodeLicense: "MIT"),
+                        envelope: SizeEnvelope(maxPixels: 2048 * 2048, multipleOf: 16, maxInputs: 10),
+                        defaults: GenerationDefaults(steps: 16, guidance: 1), sourceRepo: "", revision: "",
+                        requestKeys: ModelCatalog.flux3RequestKeys)
+        }
+        let box: JSONValue = ["id": "sign", "bbox": [0, 0.25, 0.5, 1], "desc": "a red sign"]
+        let meta: JSONObject = ["upsample": false, "boxes": [box], "unset": nil]
+        let t2i = JobSpec(capability: .textToImage, params: ["prompt": "a sign"], metaData: meta)
+        let generate = try #require(try RequestMapping.request(
+            for: RunWork(route: route(.textToImage), spec: t2i, seed: 1, width: 1024, height: 1024)) as? T2IRequest)
+        #expect(generate.metaData["upsample"] == .bool(false))
+        #expect(generate.metaData["boxes"] == .array([.object(["id": .string("sign"), "desc": .string("a red sign"),
+                                                               "bbox": .array([.int(0), .double(0.25), .double(0.5), .int(1)])])]))
+        #expect(generate.metaData["unset"] == nil, "a null value means unset")
+
+        let edit = JobSpec(capability: .imageEdit, params: ["prompt": "make it blue", "strength": 0.5],
+                           metaData: ["upsample": true])
+        let editing = try #require(try RequestMapping.request(
+            for: RunWork(route: route(.imageEdit), spec: edit, seed: 1, width: nil, height: nil,
+                         inputs: ["images": [Image(format: .png, data: Data(), width: 64, height: 64)]])) as? IEditRequest)
+        #expect(editing.metaData["upsample"] == .bool(true))
+        #expect(editing.metaData["strength"] == .double(0.5), "the mapping's own keys still ride along")
+
+        let plain = try #require(try RequestMapping.request(
+            for: RunWork(route: route(.textToImage), spec: JobSpec(capability: .textToImage, params: ["prompt": "x"]),
+                         seed: 1, width: 1024, height: 1024)) as? T2IRequest)
+        #expect(plain.metaData.isEmpty)
+    }
+
+    @Test("Undeclared package keys and wrong types are refused at submit and when mapping, never dropped")
+    func metaDataRefusals() throws {
+        let flux3 = RoutedModel(id: ModelID("flux-3-klein"), packageID: "imgsrv.flux-3-klein", capability: .textToImage,
+                                displayName: "FLUX 3 Klein",
+                                license: LicenseStamp(licenseClass: .restricted, weightLicenses: [], portCodeLicense: "MIT"),
+                                envelope: SizeEnvelope(maxPixels: 2048 * 2048, multipleOf: 16),
+                                defaults: GenerationDefaults(steps: 16, guidance: 1), sourceRepo: "", revision: "",
+                                requestKeys: ModelCatalog.flux3RequestKeys)
+        var bare = flux3
+        bare.requestKeys = []
+        func spec(_ meta: JSONObject) -> JobSpec { JobSpec(capability: .textToImage, params: ["prompt": "x"], metaData: meta) }
+
+        #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(["upsample": false]), route: flux3) }
+        // Adapters wait for the typed contract (AB-D-0155): Qwen Flash's free-form `loras` is not a request key.
+        do {
+            _ = try SubmitValidation.validate(spec(["loras": [["repo": "a/b", "file": "c.safetensors"]]]), route: flux3)
+            Issue.record("an undeclared key passed")
+        } catch let error as APIError {
+            #expect(error.status == 422 && error.code == "unsupported_parameter" && error.param == "meta_data.loras")
+            #expect(error.message.contains("takes only upsample, boxes"))
+        }
+        do {
+            _ = try SubmitValidation.validate(spec(["upsample": "no"]), route: flux3)
+            Issue.record("a string passed for a bool key")
+        } catch let error as APIError {
+            #expect(error.code == "param_out_of_range" && error.param == "meta_data.upsample")
+        }
+        #expect(throws: APIError.self) { _ = try SubmitValidation.validate(spec(["think": true]), route: bare) }
+        #expect(throws: Never.self) { _ = try SubmitValidation.validate(spec(["think": nil]), route: bare) }
+        // A host that builds RunWork itself (the Image Engine) gets the same check from the mapping.
+        #expect(throws: JobError.self) {
+            _ = try RequestMapping.request(for: RunWork(route: bare, spec: spec(["upsample": false]), seed: 1,
+                                                        width: 1024, height: 1024))
+        }
+    }
+
+    @Test("Which models declare which keys: FLUX 3 Klein upsample + boxes, SenseNova think (T2I on base tiers only)")
+    func requestKeyDeclarations() throws {
+        let all = ModelCatalog.all(environment: [:])
+        let flux3 = try #require(all.first { $0.id == "flux-3-klein" })
+        #expect(flux3.requestKeys.map(\.name) == ["upsample", "boxes"])
+        #expect(flux3.requestKeys.allSatisfy { Set($0.capabilities) == [.textToImage, .imageEdit] })
+        let base = try #require(all.first { $0.id == "sensenova-u1" })
+        #expect(base.requestKeys.map(\.name) == ["think"] && Set(base.requestKeys[0].capabilities) == [.textToImage, .imageAnalysis])
+        let fast = try #require(all.first { $0.id == "sensenova-u1-fast" })
+        #expect(fast.requestKeys.first?.capabilities == [.imageAnalysis], "the distilled tiers refuse think on T2I")
+        #expect(all.filter { !$0.requestKeys.isEmpty }.map(\.id.rawValue).sorted()
+                == ["flux-3-klein", "sensenova-u1", "sensenova-u1-fast", "sensenova-u1-fast-v1"])
+    }
+
+    @Test("JobSpec carries meta_data on the wire; a spec without it decodes and encodes as before")
+    func metaDataWire() throws {
+        let json = #"{"capability":"textToImage","params":{"prompt":"x"},"meta_data":{"upsample":false,"boxes":[]}}"#
+        let spec = try JSONDecoder().decode(JobSpec.self, from: Data(json.utf8))
+        #expect(spec.metaData == ["upsample": false, "boxes": []])
+        let again = try JSONDecoder().decode(JobSpec.self, from: try JSONEncoder().encode(spec))
+        #expect(again == spec)
+        let old = try JSONDecoder().decode(JobSpec.self, from: Data(#"{"capability":"textToImage"}"#.utf8))
+        #expect(old.metaData == nil)
+        let encoded = String(decoding: try JSONEncoder().encode(old), as: UTF8.self)
+        #expect(!encoded.contains("meta_data"), "a spec without keys stores no meta_data")
+    }
+
     @Test("Mage-Flow-Edit's residency follows the Mac: below 32 GB the conditioner and DiT take turns; MLXIMG_MAGE_RESIDENCY overrides")
     func mageResidency() {
         #expect(ModelCatalog.mageResidency([:], physicalMemory: 16 << 30) == .evictAll)

@@ -61,11 +61,17 @@ public struct JobSpec: Sendable, Codable, Equatable {
     public var brandApply: [BrandAspect]?
     /// Set by the server at submit: what the brand did, frozen like the licence stamp.
     public var brandApplied: BrandApplication?
+    /// Package keys for the routed model, passed to its request's `metaData` (AB-A-0191): FLUX 3 Klein's `upsample`
+    /// and `boxes`, SenseNova's `think`. Only the keys the model declares (`ModelInfo.requestKeys`) are accepted.
+    /// nil or empty = none.
+    public var metaData: JSONObject?
 
     public init(kind: JobKind = .generate, capability: Capability, model: ModelID? = nil, mode: String? = nil,
                 params: JSONObject = [:], inputs: [String: [AssetID]] = [:], count: Int = 1,
-                outputFormat: OutputFormat = .png, tags: [String] = [], priority: Int = 0, file: FileSpec? = nil) {
+                outputFormat: OutputFormat = .png, tags: [String] = [], priority: Int = 0, file: FileSpec? = nil,
+                metaData: JSONObject? = nil) {
         self.file = file
+        self.metaData = metaData
         self.kind = kind
         self.capability = capability
         self.model = model
@@ -85,6 +91,7 @@ public struct JobSpec: Sendable, Codable, Equatable {
         case tags, priority, file, brand
         case brandApply = "brand_apply"
         case brandApplied = "brand_applied"
+        case metaData = "meta_data"
     }
 
     public init(from decoder: Decoder) throws {
@@ -113,6 +120,7 @@ public struct JobSpec: Sendable, Codable, Equatable {
             brandApply = try c.decodeIfPresent([BrandAspect].self, forKey: .brandApply)
         }
         brandApplied = try c.decodeIfPresent(BrandApplication.self, forKey: .brandApplied)
+        metaData = try c.decodeIfPresent(JSONObject.self, forKey: .metaData)
     }
 
     /// A parameter as the run sees it: the caller's value, else the brand's.
