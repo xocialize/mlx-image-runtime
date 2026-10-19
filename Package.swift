@@ -24,7 +24,7 @@ let package = Package(
         .library(name: "ImageServerCatalog", targets: ["ImageServerCatalog"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.66.0"),
+        .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.68.0"),
         // ≥ 0.35.0: EngineImageCoding.rawImage(from:keepingDepth:), so an enhancer result keeps a 16-bit request's depth.
         // ≥ 0.41.1: `.upscaleInstant`, Anime4K VL as a weightless imageUpscale registration (`anime4k-upscale`, AB-A-0183)
         // that reads as nothing to download.
@@ -32,16 +32,18 @@ let package = Package(
         // The enhancer seam's types (UpscaleTier, UpscaleFactor) for ×6/×8 chains and the generative tiers.
         // ≥ 0.25.0: `UpscaleTier.instant`, which the tier map names for Anime4K's ×6/×8.
         .package(url: "https://github.com/xocialize/ForgeOptimizerKit.git", from: "0.25.0"),
+        // ≥ 0.68.0 (above): typed adapters, contract 1.53.0 (the adapter catalog, AB-A-0191).
         // Generative packages, registered as ForgeCore `ExternalRegistration`s.
+        // klein ≥ 0.10.1, qwen-image-edit ≥ 0.11.0 and mage-flow ≥ 0.12.0 take typed per-request adapters (AB-A-0192).
         // ≥ 0.5.3: its int8/int4 tiers download the published bf16 snapshot (AB-T-0221).
         // z-image ≥ 0.5.4, klein ≥ 0.8.1, qwen-image-edit ≥ 0.9.3 report RunProgress phases and
         // denoise steps, so running jobs show step progress (AB-A-0139).
         .package(url: "https://github.com/xocialize/z-image-swift.git", from: "0.5.4"),
-        .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.1"),
-        .package(url: "https://github.com/xocialize/qwen-image-edit-swift.git", from: "0.9.3"),
+        .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.10.1"),
+        .package(url: "https://github.com/xocialize/qwen-image-edit-swift.git", from: "0.11.0"),
         // Mage-Flow (MIT weights and port): prod since runtime 0.3.0. ≥ 0.11.0: the edit's `tiles` mode and the
         // small-Mac residency (conditioner and DiT take turns).
-        .package(url: "https://github.com/xocialize/mage-flow-swift.git", from: "0.11.0"),
+        .package(url: "https://github.com/xocialize/mage-flow-swift.git", from: "0.12.0"),
         // Work in progress: registered as maturity .wip (named use only, never default-routed).
         .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
         .package(url: "https://github.com/xocialize/ming-image-swift.git", from: "0.3.0"),
@@ -93,6 +95,9 @@ let package = Package(
             .product(name: "MLXMossImage", package: "moss-image-swift"),
             .product(name: "MossImage", package: "moss-image-swift"),
             .product(name: "MLXFlux3Klein", package: "flux3-klein-swift"),
+        ], resources: [
+            // The vendored adapter registries (format 3.1) the adapter catalog reads (`ModelCatalog.adapters()`).
+            .copy("Resources/adapters"),
         ]),
         .testTarget(name: "ImageRuntimeTests", dependencies: [
             "ImageServerAPI", "ImageServerModels", "ImageServerCatalog",
@@ -100,6 +105,7 @@ let package = Package(
             .product(name: "MLXServeCore", package: "mlx-engine-swift"),
             .product(name: "MLXMageFlow", package: "mage-flow-swift"),
             .product(name: "MossImage", package: "moss-image-swift"),
+            .product(name: "MLXKlein", package: "flux2-klein-swift"),
         ]),
     ]
 )

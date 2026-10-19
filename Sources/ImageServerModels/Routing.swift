@@ -17,10 +17,15 @@ public struct RoutedModel: Sendable, Equatable {
     public var footprintBytes: UInt64?
     /// The package `metaData` keys this capability takes on this model (AB-A-0191).
     public var requestKeys: [RequestKey]
+    /// What this model's surface for the capability accepts in the way of adapters; nil = none (AB-A-0191).
+    public var adapterSupport: AdapterSupport?
+    /// The catalog adapters that fit that surface (base model, kind, format).
+    public var adapters: [AdapterDescriptor]
 
     public init(id: ModelID, packageID: String, capability: Capability, displayName: String, license: LicenseStamp,
                 envelope: SizeEnvelope, defaults: GenerationDefaults, sourceRepo: String, revision: String,
-                footprintBytes: UInt64? = nil, requestKeys: [RequestKey] = []) {
+                footprintBytes: UInt64? = nil, requestKeys: [RequestKey] = [], adapterSupport: AdapterSupport? = nil,
+                adapters: [AdapterDescriptor] = []) {
         self.id = id
         self.packageID = packageID
         self.capability = capability
@@ -32,6 +37,8 @@ public struct RoutedModel: Sendable, Equatable {
         self.revision = revision
         self.footprintBytes = footprintBytes
         self.requestKeys = requestKeys
+        self.adapterSupport = adapterSupport
+        self.adapters = adapters
     }
 }
 
@@ -39,9 +46,19 @@ public struct RoutedModel: Sendable, Equatable {
 public protocol ModelRouter: Sendable {
     /// `model == nil` routes only to permissive ∧ prod models. Throws `APIError`.
     func route(_ capability: Capability, model: ModelID?) async throws -> RoutedModel
+    /// The same, for a job naming adapters (catalog ids): with no model named, an adapter implies its base model
+    /// (AB-D-0155) — the default route when it takes them all, else a model that does.
+    func route(_ capability: Capability, model: ModelID?, adapters: [String]) async throws -> RoutedModel
     func modelID(forPackage packageID: String) async -> ModelID?
     /// Every registered model, for residency reporting and model-level actions (prepare, pin, evict).
     func registeredModels() async -> [RegisteredModel]
+}
+
+extension ModelRouter {
+    /// Routers without an adapter catalog route as if no adapters were named.
+    public func route(_ capability: Capability, model: ModelID?, adapters: [String]) async throws -> RoutedModel {
+        try await route(capability, model: model)
+    }
 }
 
 public struct RegisteredModel: Sendable, Equatable {

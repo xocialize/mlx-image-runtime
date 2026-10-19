@@ -31,7 +31,7 @@ Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, col
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 
 ```swift
-.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.8.0"),
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.15.0"),
 ```
 
 ## The catalog
@@ -74,6 +74,64 @@ key `meta_data`), and `RequestMapping` passes them to the routed model's request
   caller's.
 - **Adapters aren't request keys.** Qwen-Image Flash's free-form `loras` stays unreachable until the engine's typed
   adapter contract lands (AB-D-0155).
+
+## Adapters (0.15.0)
+
+The runtime holds an **adapter catalog** (AB-A-0191), registered with the engine next to the models, on mlx-engine's
+typed adapters (contract 1.53.0).
+
+- **The catalog.** `ModelCatalog.adapterCatalog()` (ImageServerCatalog) reads the vendored format-3 registries in
+  `Resources/adapters`, with `sources.json` naming each file's origin commit:
+  - FLUX.2 Klein's 7 (from flux2-klein-swift);
+  - Qwen-Image Flash's 27 (from qwen-image-edit-swift).
+
+  Ids are qualified by the registry's namespace (`flux2-klein:tryon`, `qwen-image:martha`). Withdrawn entries never
+  register; an entry the engine would refuse is skipped with its reason.
+- **Registration.** Pass `adapters: ModelCatalog.adapters()` to `ImageEngineService.bootstrap`.
+  - Each model's `ModelInfo.adapters` lists the ones its surfaces accept (`AdapterInfo`: kind, slots, trigger, prompt
+    template, licence and commercial use, status, clearance).
+  - `RoutedModel` carries the surface's `AdapterSupport` and the adapters that fit it.
+- **Requests.** `JobSpec.adapters` (wire `adapters`) is `[{id, strength?, conditioning?}]`. A reference-conditioned
+  adapter's `conditioning` maps each slot role to the name of an `inputs` entry, so its images travel like any other
+  input:
+
+  ```json
+  {"capability": "imageEdit", "params": {"prompt": "apply pose from image 1 with reference from image 2"},
+   "inputs": {"skeleton": "asset://…", "subject": "asset://…"},
+   "adapters": [{"id": "flux2-klein:refcontrol-pose", "conditioning": {"pose": "skeleton", "reference": "subject"}}]}
+  ```
+
+  `RequestMapping` builds the engine's `AdapterRef`s. The engine fetches the pinned file into
+  `<models root>/adapters/<sha256>/`, checks its digest, and hands the package `resolvedAdapters`.
+- **Checks: refused before queueing,** with mlx-engine's own pre-flight (`AdapterSupport.plan`) against the routed
+  surface. 422 `unsupported_parameter` covers:
+  - an adapter that doesn't fit the model, or isn't in the catalog;
+  - too many adapters;
+  - a strength outside the admitted range (refused, never clamped);
+  - a missing slot.
+
+  A conditioning input that is missing is a 400 `missing_input`. One that reuses a capability slot (`image`, `images`,
+  `mask`, …) is a `param_out_of_range`. IC images count toward the edit's reference envelope, and an IC edit needs no
+  other image.
+- **Routing.** With no model named, the adapter implies its base model: `route(_:model:adapters:)` keeps the default
+  route when it takes every adapter, and otherwise picks the first registered model that does (prod first).
+- **Consent.** `adapterDownloadCheck(_:)` is the engine's download preview, and `prepareAdapters(_:)` fetches now. For a
+  host that must not download without asking, the engine's `setAdapterFetchPolicy(.preparedOnly)` applies.
+- **Licences.** Each adapter's licence is classified like a weight licence. Under the advisory enforcement the runtime
+  runs, an OpenRAIL-M or `NOASSERTION` adapter registers with an advisory in the engine's `licenseAdvisories`.
+  `AdapterInfo.commercial_use` is what a commercial-use policy should read.
+- **Gates:**
+  - `Adapter catalog` (offline): the bundled catalog, submit and mapping checks, the wire format, and adapter-implied
+    routing on a real engine (packages registered, nothing loaded).
+  - `MLXIMG_ADAPTER_LIVE=1 swift test --filter "Adapters live"`: a Klein adapter named on a job routes to Klein. The
+    engine fetches the pinned file into a temporary models root and stores it by sha256; the package applies it, and
+    the render changes.
+
+| Model | Base model | Adapters | Kinds |
+|---|---|---|---|
+| `klein-4b`, `klein-4b-base` | `flux2-klein-4b` | 7 (refcontrol-pose, tryon, consistence-edit, background-remove, outpaint, spritesheet, zoom) | plain; ic on edit |
+| `qwen-image-flash` | `qwen-image` | 27 community styles (OpenRAIL-M `conditional`, Apache-2.0, 4 `NOASSERTION`) | plain |
+| `mage-flow-*` | `mage-flow`, `mage-flow-edit` | none yet: the surfaces take adapters, no registry is vendored | plain; ic on edit |
 
 ## Weights
 

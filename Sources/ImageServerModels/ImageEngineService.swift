@@ -1,6 +1,7 @@
 import ForgeCore
 import Foundation
 import ImageServerAPI
+import MLXHubMetadata
 import MLXServeCore
 import MLXToolKit
 import OSLog
@@ -20,6 +21,13 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
     private var manifests: [ModelID: PackageManifest] = [:]
     private var failures: [ModelID: String] = [:]
     private var stamps: [ModelID: LicenseStamp] = [:]
+    /// The adapter catalog the engine holds (AB-A-0191), by qualified id.
+    private var adapterEntries: [String: AdapterEntry] = [:]
+    /// Adapters that didn't register, and why (a skipped registry entry, or an engine refusal).
+    private var adapterFailures: [String: String] = [:]
+    /// Per model and capability: what the surface accepts, and the catalog adapters that fit it.
+    private var adapterSupport: [ModelID: [Capability: AdapterSupport]] = [:]
+    private var compatibleAdapters: [ModelID: [Capability: [AdapterDescriptor]]] = [:]
 
     init(engine: MLXServeEngine, entries: [CatalogEntry], allowRestricted: Bool) {
         self.engine = engine
@@ -29,9 +37,12 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
 
     /// Builds the ForgeCore service, attaches the model store (**before** any registration), registers ForgeCore's
     /// tiers and then our packages. The returned `ForgeEngineService` must be kept alive by the caller.
+    ///
+    /// `adapters` is the adapter catalog (`ModelCatalog.adapters()` in ImageServerCatalog): registered with the engine
+    /// after the packages, so each model lists the adapters its surfaces accept (AB-A-0191).
     @MainActor
-    public static func bootstrap(storeRoot: URL?, catalog: [CatalogEntry],
-                                 allowRestricted: Bool = true) async -> (ImageEngineService, ForgeEngineService) {
+    public static func bootstrap(storeRoot: URL?, catalog: [CatalogEntry], allowRestricted: Bool = true,
+                                 adapters: [AdapterEntry] = []) async -> (ImageEngineService, ForgeEngineService) {
         let externals = catalog.compactMap { entry -> ExternalRegistration? in
             guard case .package(_, let register) = entry.source else { return nil }
             return ExternalRegistration(name: entry.id.rawValue, capability: entry.capabilities.first ?? .textToImage,
@@ -53,7 +64,52 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
         }
         let service = ImageEngineService(engine: forge.engine, entries: catalog, allowRestricted: allowRestricted)
         await service.recordRegistrations(outcomes)
+        await service.registerAdapters(adapters)
         return (service, forge)
+    }
+
+    /// Register catalog adapters with the engine, each on its own (one refusal never drops the rest), then work out
+    /// which adapters each registered model's surfaces accept.
+    public func registerAdapters(_ catalog: [AdapterEntry]) async {
+        for entry in catalog {
+            do {
+                try await engine.registerAdapter(entry.descriptor)
+                adapterEntries[entry.descriptor.id] = entry
+                adapterFailures[entry.descriptor.id] = nil
+            } catch {
+                adapterFailures[entry.descriptor.id] = "\(error)"
+                log.error("adapter \(entry.descriptor.id, privacy: .public) did not register: \("\(error)", privacy: .public)")
+            }
+        }
+        let descriptors = adapterEntries.values.map(\.descriptor).sorted { $0.id < $1.id }
+        adapterSupport = [:]
+        compatibleAdapters = [:]
+        for entry in entries where registered[entry.id] != nil {
+            guard let manifest = manifests[entry.id] ?? entry.manifest else { continue }
+            for capability in entry.capabilities {
+                guard let support = manifest.surfaces.first(where: { $0.capability == capability })?.adapters
+                else { continue }
+                adapterSupport[entry.id, default: [:]][capability] = support
+                compatibleAdapters[entry.id, default: [:]][capability] =
+                    descriptors.filter { support.mismatch($0, capability: capability) == nil }
+            }
+        }
+    }
+
+    /// Every adapter in the catalog, and the ones that didn't register.
+    public func adapterCatalog() -> (registered: [AdapterInfo], failures: [String: String]) {
+        (adapterEntries.values.map(\.info).sorted { $0.id < $1.id }, adapterFailures)
+    }
+
+    /// What fetching these adapters would download now: the engine's consent preview. Only adapters not yet
+    /// verified on disk appear.
+    public func adapterDownloadCheck(_ ids: [String]) async -> MaterializationPreview {
+        await engine.adapterMaterializationPreview(ids)
+    }
+
+    /// Fetch and hash-check adapters now (the consent path: preview, ask, then this).
+    public func prepareAdapters(_ ids: [String]) async throws {
+        try await engine.prepareAdapters(ids)
     }
 
     func recordRegistrations(_ outcomes: [(ModelID, PackageID?, String?)]) async {
@@ -126,7 +182,16 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
             envelope: entry.envelope, defaults: entry.defaults, footprintBytes: footprint(entry),
             state: ModelState(downloaded: downloaded, resident: resident, residentBytes: residentBytes,
                               problem: failures[entry.id].map { "not registered: \($0)" }),
-            requestKeys: entry.requestKeys)
+            requestKeys: entry.requestKeys,
+            adapters: adapterInfos(for: entry))
+    }
+
+    /// The catalog adapters any of the entry's surfaces accept, once each.
+    private func adapterInfos(for entry: CatalogEntry) -> [AdapterInfo] {
+        var seen = Set<String>()
+        return entry.capabilities.flatMap { compatibleAdapters[entry.id]?[$0] ?? [] }
+            .filter { seen.insert($0.id).inserted }
+            .compactMap { adapterEntries[$0.id]?.info }
     }
 
     private func footprint(_ entry: CatalogEntry) -> UInt64? {
@@ -202,6 +267,30 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
         return routed(chosen, packageID: registered[chosen.id]!, capability: capability)
     }
 
+    public func route(_ capability: Capability, model: ModelID?, adapters: [String]) async throws -> RoutedModel {
+        guard model == nil, !adapters.isEmpty else { return try await route(capability, model: model) }
+        let wanted = Set(adapters)
+        if let routed = try? await route(capability, model: nil), wanted.isSubset(of: Set(routed.adapters.map(\.id))) {
+            return routed
+        }
+        // The adapter implies its base model (AB-D-0155): the first model that takes every named adapter, prod before
+        // wip, under the same licence rule as naming it.
+        let fitting = entries.filter { entry in
+            entry.capabilities.contains(capability) && registered[entry.id] != nil
+                && wanted.isSubset(of: Set((compatibleAdapters[entry.id]?[capability] ?? []).map(\.id)))
+        }
+        if let chosen = fitting.first(where: { $0.maturity == .prod }) ?? fitting.first {
+            return try await route(capability, model: chosen.id)
+        }
+        let unknown = adapters.filter { adapterEntries[$0] == nil }
+        throw APIError.unprocessable(
+            "unsupported_parameter",
+            unknown.isEmpty
+                ? "No model serving \(capability.rawValue) takes every adapter named (\(adapters.joined(separator: ", ")))."
+                : "Not in the adapter catalog: \(unknown.joined(separator: ", ")).",
+            param: "adapters")
+    }
+
     public func modelID(forPackage packageID: String) async -> ModelID? {
         registered.first(where: { $0.value.rawValue == packageID })?.key
     }
@@ -222,6 +311,8 @@ public actor ImageEngineService: ImageModelDirectory, ModelRouter {
                            envelope: entry.envelope(for: capability), defaults: entry.defaults,
                            sourceRepo: manifest?.provenance.sourceRepo ?? "", revision: manifest?.provenance.revision ?? "",
                            footprintBytes: footprint(entry),
-                           requestKeys: entry.requestKeys.filter { $0.capabilities.contains(capability) })
+                           requestKeys: entry.requestKeys.filter { $0.capabilities.contains(capability) },
+                           adapterSupport: adapterSupport[entry.id]?[capability],
+                           adapters: compatibleAdapters[entry.id]?[capability] ?? [])
     }
 }

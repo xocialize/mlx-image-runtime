@@ -34,6 +34,32 @@ public enum JobKind: String, Sendable, Codable {
     case describe
 }
 
+/// One adapter (LoRA) a job asks for (`JobSpec.adapters`, AB-A-0191), by its catalog id (`ModelInfo.adapters`).
+public struct JobAdapter: Sendable, Codable, Equatable {
+    public var id: String
+    /// nil = the adapter's default strength. Outside the range the model and the adapter both admit is refused.
+    public var strength: Double?
+    /// A reference-conditioned adapter's slots: role → the name of the `inputs` entry holding its image(s), e.g.
+    /// `{"pose": "skeleton", "reference": "subject"}` with `inputs.skeleton` and `inputs.subject`. The engine orders
+    /// them into the adapter's slot order. Empty for a plain adapter.
+    public var conditioning: [String: String]
+
+    public init(id: String, strength: Double? = nil, conditioning: [String: String] = [:]) {
+        self.id = id
+        self.strength = strength
+        self.conditioning = conditioning
+    }
+
+    enum CodingKeys: String, CodingKey { case id, strength, conditioning }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        strength = try c.decodeIfPresent(Double.self, forKey: .strength)
+        conditioning = try c.decodeIfPresent([String: String].self, forKey: .conditioning) ?? [:]
+    }
+}
+
 /// What a caller asked for. Stored verbatim in the ledger (`spec_json`) — engine requests are not `Codable`, so the
 /// scheduler re-derives the typed request from this on every attempt, including after a relaunch.
 public struct JobSpec: Sendable, Codable, Equatable {
@@ -65,13 +91,17 @@ public struct JobSpec: Sendable, Codable, Equatable {
     /// and `boxes`, SenseNova's `think`. Only the keys the model declares (`ModelInfo.requestKeys`) are accepted.
     /// nil or empty = none.
     public var metaData: JSONObject?
+    /// Adapters (LoRA) by catalog id (AB-A-0191). With no model named, an adapter implies its base model.
+    /// nil or empty = none.
+    public var adapters: [JobAdapter]?
 
     public init(kind: JobKind = .generate, capability: Capability, model: ModelID? = nil, mode: String? = nil,
                 params: JSONObject = [:], inputs: [String: [AssetID]] = [:], count: Int = 1,
                 outputFormat: OutputFormat = .png, tags: [String] = [], priority: Int = 0, file: FileSpec? = nil,
-                metaData: JSONObject? = nil) {
+                metaData: JSONObject? = nil, adapters: [JobAdapter]? = nil) {
         self.file = file
         self.metaData = metaData
+        self.adapters = adapters
         self.kind = kind
         self.capability = capability
         self.model = model
@@ -92,6 +122,7 @@ public struct JobSpec: Sendable, Codable, Equatable {
         case brandApply = "brand_apply"
         case brandApplied = "brand_applied"
         case metaData = "meta_data"
+        case adapters
     }
 
     public init(from decoder: Decoder) throws {
@@ -121,6 +152,7 @@ public struct JobSpec: Sendable, Codable, Equatable {
         }
         brandApplied = try c.decodeIfPresent(BrandApplication.self, forKey: .brandApplied)
         metaData = try c.decodeIfPresent(JSONObject.self, forKey: .metaData)
+        adapters = try c.decodeIfPresent([JobAdapter].self, forKey: .adapters)
     }
 
     /// A parameter as the run sees it: the caller's value, else the brand's.

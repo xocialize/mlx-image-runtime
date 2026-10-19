@@ -62,6 +62,7 @@ public enum RequestMapping {
         if let problem = SubmitValidation.metaDataProblem(spec, route: work.route) {
             throw JobError(code: problem.code, message: problem.message)
         }
+        let adapters = try adapterRefs(work)
         switch work.route.capability {
         case .textToImage:
             let background = spec.effectiveParam("background")?.stringValue.flatMap(T2IBackground.init(rawValue:))
@@ -71,7 +72,7 @@ public enum RequestMapping {
                 width: work.width, height: work.height,
                 steps: spec.effectiveParam("steps")?.intValue ?? work.route.defaults.steps,
                 guidanceScale: guidance(spec) ?? work.route.defaults.guidance,
-                seed: work.seed, background: background, mode: mode, metaData: metaData(spec))
+                seed: work.seed, background: background, adapters: adapters, mode: mode, metaData: metaData(spec))
         case .imageEdit:
             // The caller's keys first, so the ones this mapping owns win.
             var meta = metaData(spec)
@@ -83,8 +84,8 @@ public enum RequestMapping {
                 images: work.inputs["images"] ?? [], prompt: spec.runPrompt,
                 negativePrompt: spec.runNegativePrompt, width: work.width, height: work.height,
                 steps: spec.effectiveParam("steps")?.intValue ?? work.route.defaults.steps,
-                guidanceScale: guidance(spec) ?? work.route.defaults.guidance, seed: work.seed, mode: mode,
-                metaData: meta)
+                guidanceScale: guidance(spec) ?? work.route.defaults.guidance, seed: work.seed, adapters: adapters,
+                mode: mode, metaData: meta)
         case .imageUpscale:
             return ImageUpscaleRequest(image: try one("image"), scale: spec.effectiveParam("scale")?.intValue, mode: mode)
         case .imageRestore:
@@ -143,6 +144,27 @@ public enum RequestMapping {
         spec.effectiveParam("guidance")?.doubleValue ?? spec.effectiveParam("guidanceScale")?.doubleValue
     }
 
+    /// The job's adapters as the engine's `AdapterRef`s, each conditioning role carrying the images of the input it
+    /// names, checked against the routed surface with the engine's own pre-flight (`AdapterSupport.plan`). The engine
+    /// resolves, fetches and verifies the files at run time; the package gets `resolvedAdapters`.
+    public static func adapterRefs(_ work: RunWork) throws -> [AdapterRef] {
+        guard let jobAdapters = work.spec.adapters, !jobAdapters.isEmpty else { return [] }
+        let refs = try jobAdapters.map { adapter -> AdapterRef in
+            let conditioning = try adapter.conditioning.sorted { $0.key < $1.key }.flatMap { role, input in
+                guard let images = work.inputs[input], !images.isEmpty else {
+                    throw JobError(code: "input_missing",
+                                   message: "adapter \(adapter.id) conditioning role \(role) names inputs.\(input), which is missing.")
+                }
+                return images.map { ConditioningInput(role: role, media: .image($0)) }
+            }
+            return AdapterRef(id: adapter.id, strength: adapter.strength, conditioning: conditioning)
+        }
+        if let problem = SubmitValidation.planProblem(refs, route: work.route) {
+            throw JobError(code: problem.code, message: problem.message)
+        }
+        return refs
+    }
+
     /// The job's package keys (`JobSpec.metaData`) as the engine's `metaData`. A null value means unset and is dropped.
     public static func metaData(_ spec: JobSpec) -> MetaData {
         (spec.metaData ?? [:]).filter { $0.value != .null }.mapValues(metaValue)
@@ -198,10 +220,16 @@ public enum SubmitValidation {
             seed = UInt64.random(in: 0...(maxSeed - UInt64(maxCount)))
         }
 
+        if let problem = adapterProblem(spec, route: route) { throw problem }
+        // A reference-conditioned adapter's images join the edit's references: an edit may carry no other image, and
+        // the references together stay within the envelope.
+        let conditioningImages = conditioningInputCount(spec)
+
         // Inputs: required slots present, counts within the model's envelope.
         for slot in CapabilityShape.inputSlots(capability) {
-            let count = spec.inputs[slot.name]?.count ?? 0
-            let max = slot.name == "images" ? route.envelope.maxInputs : 1
+            let images = slot.name == "images"
+            let count = (spec.inputs[slot.name]?.count ?? 0) + (images ? conditioningImages : 0)
+            let max = images ? route.envelope.maxInputs : 1
             guard count >= slot.min else {
                 throw APIError.badRequest("missing_input", "\(capability.rawValue) needs inputs.\(slot.name).", param: "inputs.\(slot.name)")
             }
@@ -317,6 +345,72 @@ public enum SubmitValidation {
             }
         }
         return nil
+    }
+
+    /// Input names a conditioning role may not use: they are the capabilities' own image slots.
+    static let reservedInputNames: Set<String> = ["image", "images", "source", "references", "refs", "mask"]
+
+    /// How many images the job's adapters bring as conditioning.
+    static func conditioningInputCount(_ spec: JobSpec) -> Int {
+        (spec.adapters ?? []).reduce(0) { total, adapter in
+            total + adapter.conditioning.values.reduce(0) { $0 + (spec.inputs[$1]?.count ?? 0) }
+        }
+    }
+
+    /// Adapters (`JobSpec.adapters`, AB-A-0191): each conditioning role names an `inputs` entry that is present and
+    /// not one of the capability's own slots, and the whole set passes the routed surface's `AdapterSupport.plan` —
+    /// the engine's pre-flight (catalog, fit, count, strength, slots) — before the job is queued.
+    public static func adapterProblem(_ spec: JobSpec, route: RoutedModel) -> APIError? {
+        guard let adapters = spec.adapters, !adapters.isEmpty else { return nil }
+        // Placeholder media: the plan checks roles, media kinds and counts, not pixels.
+        let placeholder = MLXToolKit.Image(format: .png, data: Data(), width: 1, height: 1)
+        var refs: [AdapterRef] = []
+        for adapter in adapters {
+            var conditioning: [ConditioningInput] = []
+            for (role, input) in adapter.conditioning.sorted(by: { $0.key < $1.key }) {
+                guard !reservedInputNames.contains(input) else {
+                    return .unprocessable("param_out_of_range",
+                                          "adapter \(adapter.id) conditioning role \(role): name its own input, not inputs.\(input).",
+                                          param: "adapters")
+                }
+                let count = spec.inputs[input]?.count ?? 0
+                guard count > 0 else {
+                    return .badRequest("missing_input",
+                                       "adapter \(adapter.id) conditioning role \(role) names inputs.\(input), which is missing.",
+                                       param: "inputs.\(input)")
+                }
+                conditioning += Array(repeating: ConditioningInput(role: role, media: .image(placeholder)), count: count)
+            }
+            refs.append(AdapterRef(id: adapter.id, strength: adapter.strength, conditioning: conditioning))
+        }
+        return planProblem(refs, route: route)
+    }
+
+    /// `AdapterSupport.plan` against the route's surface and the adapters that fit it, as a 422.
+    static func planProblem(_ refs: [AdapterRef], route: RoutedModel) -> APIError? {
+        guard !refs.isEmpty else { return nil }
+        guard let support = route.adapterSupport else {
+            return .unprocessable("unsupported_parameter",
+                                  "\(route.id) takes no adapters for \(route.capability.rawValue).", param: "adapters")
+        }
+        for ref in refs where !route.adapters.contains(where: { $0.id == ref.id }) {
+            let offered = route.adapters.map(\.id)
+            return .unprocessable("unsupported_parameter",
+                                  "adapter \(ref.id) doesn't fit \(route.id) for \(route.capability.rawValue); "
+                                      + (offered.isEmpty ? "it takes none from the catalog." : "it takes "
+                                          + offered.joined(separator: ", ") + "."),
+                                  param: "adapters")
+        }
+        do {
+            _ = try support.plan(refs, capability: route.capability, quant: nil) { id in
+                route.adapters.first { $0.id == id }
+            }
+            return nil
+        } catch PackageError.unsupportedRequestFeature(let why) {
+            return .unprocessable("unsupported_parameter", why, param: "adapters")
+        } catch {
+            return .unprocessable("unsupported_parameter", "\(error)", param: "adapters")
+        }
     }
 
     /// Requested size → served size: floored to the envelope's multiple and checked against its pixel ceiling.

@@ -1,0 +1,17 @@
+{
+  "_note": "Vendored adapter registries (format 3.1, ltx-lora-registry v0.3.0). Each file is copied verbatim from its package repo at the commit below; refresh by copying again and updating the commit. Only registries whose base model a catalog entry serves are vendored (Edit Turbo's qwen-image-edit-2511 registry isn't: the catalog serves the 2511 base package, which takes no adapters).",
+  "registries": [
+    {
+      "file": "flux2-klein-4b.json",
+      "repo": "xocialize/flux2-klein-swift",
+      "path": "registry/flux2-klein-4b.json",
+      "commit": "74d4b23f07dcdce44d27817d00d33977aa8b3260"
+    },
+    {
+      "file": "qwen-image.json",
+      "repo": "xocialize/qwen-image-edit-swift",
+      "path": "registry/qwen-image.json",
+      "commit": "16584ad025fa6b9ca66bf5f13e052a958f85df30"
+    }
+  ]
+}

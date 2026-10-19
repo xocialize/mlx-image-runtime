@@ -1,5 +1,5 @@
 {
-  "originHash" : "cdddb3f2be3685540c44cb256791e85f0cf4e58964f05b0bd510719f829a07ab",
+  "originHash" : "414e6c3ec2c97559019674a645dcce0df50bd1ea9fc2afcac0bbb41816c8a660",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-klein-swift.git",
       "state" : {
-        "revision" : "96113ddb1d592640c331011bbdf122ef7fad35dd",
-        "version" : "0.8.1"
+        "revision" : "74d4b23f07dcdce44d27817d00d33977aa8b3260",
+        "version" : "0.10.1"
       }
     },
     {
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mage-flow-swift.git",
       "state" : {
-        "revision" : "434b850b0cc18485220166651f3f331fb01f9209",
-        "version" : "0.11.0"
+        "revision" : "3e7e81114175bf788cbffbc15d284fc72b706777",
+        "version" : "0.12.0"
       }
     },
     {
@@ -258,8 +258,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-engine-swift.git",
       "state" : {
-        "revision" : "aba512f37c8228adce4cac682583acea612bd6f7",
-        "version" : "0.67.0"
+        "revision" : "5b8fc5277ec68f7fa0417e03be2cee157dccb2b1",
+        "version" : "0.70.0"
       }
     },
     {
@@ -474,8 +474,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen-image-edit-swift.git",
       "state" : {
-        "revision" : "63b3c6864f5caec2d70052d696afcb531c7c986f",
-        "version" : "0.9.3"
+        "revision" : "16584ad025fa6b9ca66bf5f13e052a958f85df30",
+        "version" : "0.11.0"
       }
     },
     {

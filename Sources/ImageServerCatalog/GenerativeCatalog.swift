@@ -49,6 +49,31 @@ extension ModelCatalog {
             }))
     }
 
+    /// The adapter catalog (AB-A-0191): the vendored format-3 registries in `Resources/adapters` (`sources.json`
+    /// names each file's origin commit) — FLUX.2 Klein's 7 adapters and Qwen-Image Flash's 27. Pass it to
+    /// `ImageEngineService.bootstrap(…, adapters:)`; each model then lists the adapters its surfaces accept.
+    /// Entries the engine would refuse are left out and returned in `skipped`.
+    public static func adapterCatalog() -> (entries: [AdapterEntry], skipped: [AdapterCatalog.Skipped]) {
+        guard let directory = Bundle.module.url(forResource: "adapters", withExtension: nil),
+              let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        else { return ([], []) }
+        var entries: [AdapterEntry] = [], skipped: [AdapterCatalog.Skipped] = []
+        for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
+        where file.pathExtension == "json" && file.lastPathComponent != "sources.json" {
+            do {
+                let decoded = try AdapterCatalog.decode(Data(contentsOf: file))
+                entries += decoded.entries
+                skipped += decoded.skipped
+            } catch {
+                skipped.append(AdapterCatalog.Skipped(id: file.lastPathComponent, reason: "\(error)"))
+            }
+        }
+        return (entries, skipped)
+    }
+
+    /// `adapterCatalog().entries`.
+    public static func adapters() -> [AdapterEntry] { adapterCatalog().entries }
+
     public static func generative(environment: [String: String] = ProcessInfo.processInfo.environment) -> [CatalogEntry] {
         let snapshots = Snapshots(environment: environment)
         let mageFilter = mageContentFilter(environment)
