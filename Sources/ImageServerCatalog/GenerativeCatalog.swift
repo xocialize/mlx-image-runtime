@@ -21,6 +21,10 @@ import MLXZImage
 
 /// The generative and analysis packages this app registers itself, beside ForgeCore's tiers (`processing()`, in
 /// ImageServerModels). Linking this target links every generative package.
+///
+/// Superseded (2026-10-29): these entries now ship as offers in Gaea plugins (gaea-plugin-z-image, -flux2-klein,
+/// -qwen-image, -mage-vl and the research plugins; Gaea G-20, AB-D-0182). New generative work goes there. The README's
+/// "Superseded by Gaea plugins" table maps each id to its plugin.
 extension ModelCatalog {
     /// Everything the server exposes: generative packages, then ForgeCore's image-processing tiers.
     public static func all(environment: [String: String] = ProcessInfo.processInfo.environment) -> [CatalogEntry] {

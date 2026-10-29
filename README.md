@@ -1,5 +1,13 @@
 # mlx-image-runtime
 
+> **`ImageServerCatalog`'s generative entries are superseded by Gaea plugins (2026-10-29).** Gaea
+> ([xocialize-code/gaea](https://github.com/xocialize-code/gaea)) is the production MES media server, and its image
+> phase (G1) passed at byte-identical parity with Pixel Agency Image Engine v0.9.1 (AB-T-0375). Each generative and
+> analysis entry below now ships as an offer in a signed Gaea plugin ([table](#superseded-by-gaea-plugins)); new
+> generative work goes there, not here (Gaea G-20, AB-D-0182). **`ImageServerAPI` and `ImageServerModels` stay
+> library products** (Pixel Agency Desktop and pixel-agency-library link them) and are unchanged. `ImageServerCatalog`
+> still builds and resolves, for builds that still link it.
+
 The engine half of ML[X] Image Server, as its own package. It turns image requests into model runs on
 [MLXEngine](https://github.com/xocialize/mlx-engine-swift) and [ForgeCore](https://github.com/xocialize/ForgeCore):
 the model catalog, routing and licence classification, the runner, request mapping, and the wire types they share.
@@ -16,7 +24,7 @@ Apple silicon, macOS 26, Swift 6.2.
 |---|---|---|
 | `ImageServerAPI` | Wire types and seam protocols: jobs, models, licence stamps, assets. No MLX. | MLXToolKit |
 | `ImageServerModels` | The runtime: `CatalogEntry`, ForgeCore's image-processing tiers (`ModelCatalog.processing()`), `ImageEngineService`, routing, `ModelRunner`, request mapping and submit validation. | ForgeCore, no generative package |
-| `ImageServerCatalog` | The generative and analysis packages: `ModelCatalog.all()`, `generative()`, `analysis()`. | every package below |
+| `ImageServerCatalog` | The generative and analysis packages: `ModelCatalog.all()`, `generative()`, `analysis()`. **Superseded by Gaea plugins** ([below](#superseded-by-gaea-plugins)). | every package below |
 
 Upscales take `scale` 2, 4, 6 or 8. An `EngineRunner` given ForgeCore's `EngineImageEnhancer` serves ×6 and ×8 as
 chains (the model at ×4, then NERVE ×2, then a fit down for ×6) and runs the generative tiers (VOSR2, Nacre) behind
@@ -33,6 +41,29 @@ quality scoring) without the generative packages. Add `ImageServerCatalog` for g
 ```swift
 .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.15.0"),
 ```
+
+## Superseded by Gaea plugins
+
+Each `ImageServerCatalog` entry is now `offers[]` data in a Gaea plugin manifest, and the environment-variable
+variants are plugin `settings[]` (Gaea plan §4, G-20). All repos are under
+[xocialize-code](https://github.com/xocialize-code).
+
+| Catalog ids | Gaea plugin |
+|---|---|
+| `z-image-turbo`, `z-image` | gaea-plugin-z-image |
+| `klein-4b`, `klein-4b-base` (adapters from 0.2.1) | gaea-plugin-flux2-klein |
+| `qwen-image-flash`, `qwen-image-edit` (adapters from 0.2.0) | gaea-plugin-qwen-image |
+| `mage-vl` | gaea-plugin-mage-vl |
+| `mage-flow`, `mage-flow-turbo`, `mage-flow-edit`, `mage-flow-edit-turbo`, `mage-flow-edit-base` | gaea-plugin-mage-flow (research, named only) |
+| `sensenova-u1`, `sensenova-u1-fast`, `sensenova-u1-fast-v1` | gaea-plugin-sensenova (research, named only) |
+| `moss-image-sft`, `moss-image-base` | gaea-plugin-moss-image (research, named only) |
+| `qwen-image-2.1`, `qwen-image-2.1-base` | gaea-plugin-qwen-image-21 (research, named only and opt-in) |
+| `flux-3-klein` | gaea-plugin-flux3-klein (research, named only and opt-in) |
+| `ming-image`, `boogu`, `boogu-edit`, `anima` | **none yet**: these `wip` entries have no Gaea plugin and stay here, frozen |
+
+Beside the catalog, Gaea's prompt enhancer is gaea-plugin-prompt-enhance (prompt-enhance-kit's profiles), and its
+processing pack, gaea-plugin-forge, serves ForgeCore's tiers to Gaea. In this package those tiers stay in
+`ImageServerModels` (`ModelCatalog.processing()`), which Desktop's built-in engine keeps using (D-13/D-19).
 
 ## The catalog
 
