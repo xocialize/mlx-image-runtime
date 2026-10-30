@@ -1,15 +1,6 @@
 {
-  "originHash" : "414e6c3ec2c97559019674a645dcce0df50bd1ea9fc2afcac0bbb41816c8a660",
+  "originHash" : "8135d85827eb0e3502c4e9ea1dd31e48bb5f0cb1362781980dab697a0cbf8192",
   "pins" : [
-    {
-      "identity" : "anima-mlx-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/xocialize/anima-mlx-swift.git",
-      "state" : {
-        "revision" : "04949dca3cd0ca858369f69436a65573ff98d4c4",
-        "version" : "0.3.0"
-      }
-    },
     {
       "identity" : "anime4k-metal",
       "kind" : "remoteSourceControl",

@@ -10,8 +10,9 @@ import PackageDescription
 //                       engine service and router, the runner over MLXServeEngine, request mapping. Links ForgeCore
 //                       and no generative package.
 //   ImageServerCatalog  the generative and analysis packages (ModelCatalog.all/generative/analysis): Z-Image, Klein,
-//                       Qwen-Image Edit and Flash, Mage-Flow, SenseNova U1, MOSS-Image, Ming, Boogu, Anima,
-//                       Qwen-Image 2.1, Mage-VL. Linking it links all of them.
+//                       Qwen-Image Edit and Flash, Mage-Flow, SenseNova U1, MOSS-Image, Ming, Boogu, Qwen-Image 2.1,
+//                       Mage-VL. Linking it links all of them. Anima is gone as of 0.16.0: dropped everywhere
+//                       (AB-D-0190).
 //
 // Used by ML[X] Image Server and by the Pixel Agency Image Engine (whose normalizer needs only ImageServerModels, so
 // an app can embed ForgeCore's tiers without the generative packages).
@@ -48,8 +49,6 @@ let package = Package(
         .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
         .package(url: "https://github.com/xocialize/ming-image-swift.git", from: "0.3.0"),
         .package(url: "https://github.com/xocialize/boogu-image-swift.git", from: "0.4.0"),
-        // CircleStone non-commercial weights (evaluation): registered only when a local snapshot is configured.
-        .package(url: "https://github.com/xocialize/anima-mlx-swift.git", from: "0.3.0"),
         // Qwen Research licence (non-commercial): research tier, stamped restricted. ≥ 0.2.0 for the Turbo checkpoint.
         .package(url: "https://github.com/xocialize/qwen-image21-swift.git", from: "0.2.0"),
         // Mage-VL (Apache-2.0): imageAnalysis, for captions, alt text and tags.
@@ -89,7 +88,6 @@ let package = Package(
             .product(name: "MLXSenseNovaU1", package: "sensenova-u1-swift"),
             .product(name: "MLXMingImage", package: "ming-image-swift"),
             .product(name: "MLXBoogu", package: "boogu-image-swift"),
-            .product(name: "MLXAnima", package: "anima-mlx-swift"),
             .product(name: "MLXQwenImage21", package: "qwen-image21-swift"),
             .product(name: "MLXMageVL", package: "mage-vl-swift"),
             .product(name: "MLXMossImage", package: "moss-image-swift"),

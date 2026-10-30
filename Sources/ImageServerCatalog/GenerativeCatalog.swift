@@ -2,7 +2,6 @@ import ForgeCore
 import Foundation
 import ImageServerAPI
 import ImageServerModels
-import MLXAnima
 import MLXBoogu
 import MLXKlein
 import MLXMageFlow
@@ -101,7 +100,6 @@ extension ModelCatalog {
         // Local-weights-only packages register only when their weights are present.
         if let boogu = boogu(snapshots) { entries.append(boogu) }
         if let booguEdit = booguEdit(snapshots) { entries.append(booguEdit) }
-        if let anima = anima(snapshots) { entries.append(anima) }
         // Qwen-Image-2.1: naming it serves the Turbo checkpoint; the 40-step original is `qwen-image-2.1-base`.
         entries.append(qwenImage21Turbo(snapshots))
         entries.append(qwenImage21Base(snapshots))
@@ -522,22 +520,6 @@ extension ModelCatalog {
             defaults: defaults, quant: .bf16, localSnapshot: snapshot,
             source: .package(manifest: BooguImagePackage.manifest, register: {
                 try await $0.register(BooguImagePackage.registration, configuration: configuration, id: packageID)
-            }))
-    }
-
-    /// Anima: CircleStone non-commercial weights (eval-acknowledged), local snapshot only.
-    static func anima(_ snapshots: Snapshots) -> CatalogEntry? {
-        guard let snapshot = snapshots.path(for: "anima") else { return nil }
-        let packageID = PackageID("imgsrv.anima")
-        let configuration = AnimaConfiguration(snapshotPath: snapshot, quant: .bf16)
-        return CatalogEntry(
-            id: "anima", packageID: packageID, displayName: "Anima",
-            summary: "Anima (CircleStone non-commercial, evaluation only) — anime/illustration text-to-image.",
-            capabilities: [.textToImage], maturity: .wip,
-            envelope: SizeEnvelope(maxPixels: 1024 * 1024, multipleOf: 16),
-            defaults: GenerationDefaults(steps: 30, guidance: 5.0), quant: .bf16, localSnapshot: snapshot,
-            source: .package(manifest: AnimaT2IPackage.manifest, register: {
-                try await $0.register(AnimaT2IPackage.registration, configuration: configuration, id: packageID)
             }))
     }
 

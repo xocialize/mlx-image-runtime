@@ -35,6 +35,14 @@ struct RuntimeTests {
         #expect(Array(all.suffix(ModelCatalog.processing().count)).map(\.id) == ModelCatalog.processing().map(\.id))
     }
 
+    @Test("Anima is gone (AB-D-0190): no entry, even with a snapshot configured")
+    func animaRemoved() {
+        let environment = ["MLXIMG_SNAPSHOT_ANIMA": NSTemporaryDirectory(), "MLXIMG_WEIGHTS_ROOT": NSTemporaryDirectory()]
+        let all = ModelCatalog.all(environment: environment)
+        #expect(!all.contains { $0.id.rawValue.lowercased().contains("anima") })
+        #expect(!all.contains { $0.packageID.rawValue == "imgsrv.anima" })
+    }
+
     @Test("Mage-Flow is prod and permissive (MIT weights and port) but preferred for nothing")
     func mageFlow() {
         let all = ModelCatalog.all(environment: [:])

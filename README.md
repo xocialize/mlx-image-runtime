@@ -39,7 +39,7 @@ Take `ImageServerModels` alone to embed ForgeCore's tiers (upscale, restore, col
 quality scoring) without the generative packages. Add `ImageServerCatalog` for generation and editing.
 
 ```swift
-.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.15.0"),
+.package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.16.0"),
 ```
 
 ## Superseded by Gaea plugins
@@ -59,7 +59,8 @@ variants are plugin `settings[]` (Gaea plan §4, G-20). All repos are under
 | `moss-image-sft`, `moss-image-base` | gaea-plugin-moss-image (research, named only) |
 | `qwen-image-2.1`, `qwen-image-2.1-base` | gaea-plugin-qwen-image-21 (research, named only and opt-in) |
 | `flux-3-klein` | gaea-plugin-flux3-klein (research, named only and opt-in) |
-| `ming-image`, `boogu`, `boogu-edit`, `anima` | **none yet**: these `wip` entries have no Gaea plugin and stay here, frozen |
+| `ming-image`, `boogu`, `boogu-edit` | **none yet**: these `wip` entries have no Gaea plugin and stay here, frozen |
+| `anima` | **none, and removed here in 0.16.0**: dropped everywhere (AB-D-0190) |
 
 Beside the catalog, Gaea's prompt enhancer is gaea-plugin-prompt-enhance (prompt-enhance-kit's profiles), and its
 processing pack, gaea-plugin-forge, serves ForgeCore's tiers to Gaea. In this package those tiers stay in
@@ -74,12 +75,17 @@ envelope and its licence.
 | Maturity | Models |
 |---|---|
 | `prod` | Z-Image and Z-Image Turbo, FLUX.2 Klein 4B and Klein 4B Base, Qwen-Image Flash, Qwen-Image-Edit 2511, Mage-Flow (and Turbo; Edit, Edit Turbo and Edit Base), MOSS-Image (SFT and Base), Mage-VL, ForgeCore's tiers |
-| `wip` | SenseNova U1.5, Ming-Image, Boogu, Anima, Qwen-Image 2.1 (Turbo and Base) |
+| `wip` | SenseNova U1.5, Ming-Image, Boogu, Qwen-Image 2.1 (Turbo and Base) |
 
 Default routing picks only `prod` models with permissive licences. Everything else runs only when a request names it.
 
+**Anima is removed (0.16.0, AB-D-0190).** In an in-app check it returned explicit nudity of a youthful-looking
+character from a benign prompt, so no fleet product offers it, research flag or not. The `anima` entry, the
+`anima-mlx-swift` dependency and its `MLXAnima` product are gone; `MLXIMG_SNAPSHOT_ANIMA` is ignored and naming `anima`
+is an unknown model.
+
 Licence classes come from each package's own declaration, classified against the engine's allowlists
-(`LicenseClassifier`): `permissive`, `evalAcknowledged` (for example Anima's CircleStone non-commercial weights) or
+(`LicenseClassifier`): `permissive`, `evalAcknowledged` (non-commercial weights acknowledged for evaluation) or
 `restricted` (for example Qwen-Image 2.1's Qwen Research licence). A derived asset inherits the most restrictive class
 of its model and inputs.
 
@@ -166,8 +172,8 @@ typed adapters (contract 1.53.0).
 
 ## Weights
 
-Most packages download their weights through the engine's model store. A few read local snapshots: Boogu and Anima
-register only when theirs is found, and Qwen-Image 2.1 needs its Turbo, base and Qwen3-VL-8B snapshots to run. The
+Most packages download their weights through the engine's model store. A few read local snapshots: Boogu registers
+only when its snapshots are found, and Qwen-Image 2.1 needs its Turbo, base and Qwen3-VL-8B snapshots to run. The
 runtime finds them through:
 
 - `MLXIMG_WEIGHTS_ROOT`: a folder holding snapshots by their usual folder names.
